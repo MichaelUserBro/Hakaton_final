@@ -3,9 +3,9 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .models import Document
-from .services import PistonCodeRunner, AIService 
+from .services import PistonCodeRunner, AIService
 
-# Инициализируем сервисы на уровне модуля для переиспользования
+# Инициализируем сервисы
 ai_service = AIService()
 runner_service = PistonCodeRunner()
 
@@ -19,19 +19,17 @@ def sync_code(request):
     """Синхронизация содержимого редактора с базой данных."""
     doc, _ = Document.objects.get_or_create(id=1)
     if request.method == 'POST':
-        # Поддержка как обычного POST, так и JSON (для разных фронтенд-подходов)
         if request.content_type == 'application/json':
             data = json.loads(request.body)
             doc.content = data.get('content', '')
         else:
             doc.content = request.POST.get('content', '')
-            
         doc.save()
         return JsonResponse({'status': 'ok'})
     return JsonResponse({'content': doc.content})
 
 def run_code(request):
-    """Запуск кода через песочницу Judge0."""
+    """Запуск кода."""
     try:
         doc = Document.objects.get(id=1)
         output = runner_service.run(doc.content)
@@ -41,7 +39,7 @@ def run_code(request):
 
 @csrf_exempt
 def ai_review(request):
-    """Получение глубокого анализа кода от LLM (DeepSeek)."""
+    """Получение анализа кода от AI."""
     try:
         doc = Document.objects.get(id=1)
         hints = ai_service.analyze_code(doc.content)
@@ -51,19 +49,16 @@ def ai_review(request):
 
 @csrf_exempt
 def resolve_ai_conflict(request):
-    """Новая функция: разрешение конфликтов между двумя вариантами строк."""
+    """Разрешение конфликтов AI."""
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
             variant_a = data.get("variant_a", "")
             variant_b = data.get("variant_b", "")
-            
             if not variant_a or not variant_b:
-                return JsonResponse({'error': 'Необходимо предоставить оба варианта кода'}, status=400)
-                
+                return JsonResponse({'error': 'Нужно два варианта'}, status=400)
             best_option = ai_service.resolve_conflict(variant_a, variant_b)
             return JsonResponse({'resolved_code': best_option})
         except Exception as e:
-            return JsonResponse({'error': f"Ошибка при разрешении конфликта: {str(e)}"}, status=500)
-    
-    return JsonResponse({'error': 'Метод не поддерживается'}, status=405)
+            return JsonResponse({'error': str(e)}, status=500)
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
