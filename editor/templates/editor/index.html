@@ -236,7 +236,9 @@
         editor.setTheme("ace/theme/monokai");
         editor.session.setMode("ace/mode/python");
         editor.setShowPrintMargin(false);
-        editor.setOptions({ enableBasicAutocompletion: true, enableLiveAutocompletion: true });
+
+        // Переменная для хранения версии кода (ВАЖНО для работы с новым бэкендом)
+        let currentVersion = 0;
 
         function showToast(message) {
             const container = document.getElementById('notifications');
@@ -247,42 +249,59 @@
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
         }
 
-        editor.commands.addCommand({
-            name: 'save',
-            bindKey: { win: 'Ctrl-S', mac: 'Command-S' },
-            exec: function (editor) { sync(); showToast("Код сохранен вручную (Ctrl+S)"); }
-        });
-
+        // 1. Новая логика синхронизации с поддержкой версий (чтобы избежать ошибки 409)
         async function sync() {
             const content = editor.getValue();
+            const formData = new FormData();
+            formData.append('content', content);
+            formData.append('version', currentVersion); // Отправляем версию
+
             try {
-                await fetch('/sync/', {
+                const res = await fetch('/sync/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'content=' + encodeURIComponent(content)
+                    body: formData
                 });
-                const res = await fetch('/sync/');
+
+                if (res.status === 409) {
+                    console.warn("Конфликт версий! Кто-то другой обновил код.");
+                    showToast("Внимание: код был изменен другим участником");
+                }
+
                 const data = await res.json();
-                if (data.content !== editor.getValue()) {
+                // Обновляем локальную версию из ответа сервера
+                if (data.version) currentVersion = data.version;
+
+                if (data.content && data.content !== editor.getValue()) {
                     const pos = editor.getCursorPosition();
                     editor.setValue(data.content, -1);
                     editor.moveCursorToPosition(pos);
-                    document.getElementById('log').innerText = "Last sync: " + new Date().toLocaleTimeString();
+                    document.getElementById('log').innerText = "Last sync: " + new Date().toLocaleTimeString() + " (v" + currentVersion + ")";
                 }
-            } catch (e) { console.log("Sync error"); }
+            } catch (e) { console.error("Sync error"); }
         }
 
+        // 2. Обновленный вызов AI-анализа через новый эндпоинт /analyze/
         async function getAIReview() {
             const aiPanel = document.getElementById('ai-panel');
             aiPanel.classList.add('analyzing');
+
+            const formData = new FormData();
+            formData.append('content', editor.getValue());
+
             try {
-                const res = await fetch('/ai-review/');
+                const res = await fetch('/analyze/', {
+                    method: 'POST',
+                    body: formData
+                });
                 const data = await res.json();
                 if (data.hints) {
                     document.getElementById('ai-hints').innerText = data.hints.join(' | ');
                 }
-            } catch (e) { }
-            finally { setTimeout(() => aiPanel.classList.remove('analyzing'), 1500); }
+            } catch (e) {
+                console.error("AI Analysis error");
+            } finally {
+                setTimeout(() => aiPanel.classList.remove('analyzing'), 1500);
+            }
         }
 
         async function runCode() {
@@ -296,22 +315,7 @@
             } catch (e) { out.innerText += "Execution failed."; }
         }
 
-        async function resolveLineConflict() {
-            const log = document.getElementById('log');
-            log.innerText = "AI thinking...";
-            try {
-                const res = await fetch('/resolve-conflict/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: editor.session.getLine(editor.getCursorPosition().row) })
-                });
-                const data = await res.json();
-                showToast("AI предложил исправление!");
-                log.innerText = "Conflict resolved.";
-            } catch (e) { log.innerText = "Error resolving conflict."; }
-        }
-
-        setTimeout(() => showToast("Студент 2 подключился к сессии"), 2000);
+        // Интервалы
         setInterval(sync, 3000);
         setInterval(getAIReview, 10000);
     </script>
