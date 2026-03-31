@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>AI-Collaborative IDE 2.0</title>
+    <title>AI IDE 2.0 | Hackathon Edition</title>
     <style>
         body { background: #1e1e1e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         header { background: #252526; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
@@ -10,58 +10,73 @@
         
         /* Сайдбар */
         .sidebar { width: 250px; background: #252526; border-right: 1px solid #333; padding: 15px; display: flex; flex-direction: column; }
-        .sidebar h3 { font-size: 12px; text-transform: uppercase; color: #858585; letter-spacing: 1px; }
-        .user-item { display: flex; align-items: center; margin-bottom: 10px; font-size: 14px; }
+        .sidebar h3 { font-size: 11px; text-transform: uppercase; color: #858585; letter-spacing: 1px; margin-bottom: 15px; }
+        .user-item { display: flex; align-items: center; margin-bottom: 10px; font-size: 13px; }
         .user-status { width: 8px; height: 8px; background: #4ec9b0; border-radius: 50%; margin-right: 10px; }
 
         /* Редактор */
-        .editor-area { flex: 1; display: flex; flex-direction: column; }
+        .editor-area { flex: 1; display: flex; flex-direction: column; position: relative; }
         #editor { flex: 1; font-size: 14px; }
 
         /* Панель AI */
-        #ai-panel { background: #1a2a3a; border-left: 4px solid #007acc; padding: 12px; font-size: 13px; }
-        .ai-header { font-weight: bold; color: #4fc1ff; margin-bottom: 4px; }
+        #ai-panel { background: #1a2a3a; border-bottom: 1px solid #007acc; padding: 10px 20px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; }
+        .ai-header { font-weight: bold; color: #4fc1ff; display: flex; align-items: center; }
+        #ai-hints { color: #dcdcdc; font-style: italic; margin-left: 10px; flex: 1; }
 
         /* Терминал */
-        .terminal { height: 180px; background: #000; border-top: 1px solid #333; padding: 10px; font-family: monospace; color: #00ff00; overflow-y: auto; }
+        .terminal { height: 150px; background: #000; border-top: 1px solid #333; padding: 10px; font-family: 'Consolas', monospace; color: #cccccc; overflow-y: auto; white-space: pre-wrap; }
         
-        .btn-run { background: #28a745; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn { border: none; padding: 6px 12px; cursor: pointer; border-radius: 3px; font-size: 12px; font-weight: 500; transition: 0.2s; }
+        .btn-run { background: #28a745; color: white; margin-left: 10px; }
         .btn-run:hover { background: #218838; }
+        .btn-ai { background: #007acc; color: white; margin-top: 10px; width: 100%; }
+        .btn-ai:hover { background: #005a9e; }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-size: 16px;">🚀 HACKATHON_PROJECT <span style="color: #6a9955;">— main.py</span></div>
-    <button class="btn-run" onclick="runCode()">▶ Run Code</button>
+    <div style="font-size: 14px; font-weight: 600;">🚀 PROJECT: <span style="color: #4ec9b0;">smart_ide_v2</span></div>
+    <div>
+        <button class="btn btn-run" onclick="runCode()">▶ RUN CODE</button>
+    </div>
 </header>
 
 <div class="main-container">
     <div class="sidebar">
-        <h3>Session Dashboard</h3>
-        <div class="user-item"><div class="user-status"></div> Student 1 (You)</div>
-        <div class="user-item"><div class="user-status" style="background: #ce9178;"></div> Student 2</div>
-        <div id="log" style="margin-top: 20px; font-size: 11px; color: #666;">Waiting for changes...</div>
+        <h3>Collaborators</h3>
+        <div class="user-item"><div class="user-status"></div> You (Lead Dev)</div>
+        <div class="user-item"><div class="user-status" style="background: #ce9178;"></div> AI Assistant</div>
+        
+        <h3 style="margin-top: 30px;">AI Tools</h3>
+        <button class="btn btn-ai" onclick="resolveLineConflict()">✨ Fix Current Line</button>
+        <div id="log" style="margin-top: auto; font-size: 10px; color: #666;">Ready.</div>
     </div>
 
     <div class="editor-area">
         <div id="ai-panel">
-            <div class="ai-header">🤖 AI REVIEWER</div>
-            <div id="ai-hints">Analyzing code patterns...</div>
+            <div class="ai-header">🤖 AI REVIEW:</div>
+            <div id="ai-hints">Analyzing code for patterns...</div>
         </div>
         <div id="editor">{{ doc.content }}</div>
     </div>
 </div>
 
-<div class="terminal" id="output">Terminal initialized. Ready to execute Python...</div>
+<div class="terminal" id="output">Terminal: Ready for execution.</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
 <script>
+    // Инициализация Ace Editor
     var editor = ace.edit("editor");
     editor.setTheme("ace/theme/monokai");
     editor.session.setMode("ace/mode/python");
     editor.setShowPrintMargin(false);
+    editor.setOptions({
+        enableBasicAutocompletion: true,
+        enableLiveAutocompletion: true
+    });
 
+    // 1. Синхронизация кода с сервером
     async function sync() {
         const content = editor.getValue();
         try {
@@ -70,25 +85,22 @@
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: 'content=' + encodeURIComponent(content)
             });
-            const res = await fetch('/sync/');
-            const data = await res.json();
-            if (data.content !== editor.getValue()) {
-                const pos = editor.getCursorPosition();
-                editor.setValue(data.content, -1);
-                editor.moveCursorToPosition(pos);
-                document.getElementById('log').innerText = "Last sync: " + new Date().toLocaleTimeString();
-            }
-        } catch (e) { console.log("Sync error"); }
+            document.getElementById('log').innerText = "Last sync: " + new Date().toLocaleTimeString();
+        } catch (e) { console.error("Sync error"); }
     }
 
+    // 2. Получение советов AI (ЭТАП 2)
     async function getAIReview() {
         try {
-            const res = await fetch('/ai-review/');
+            const res = await fetch('/review/', { method: 'POST', body: JSON.stringify({code: editor.getValue()}) });
             const data = await res.json();
-            document.getElementById('ai-hints').innerText = data.hints.join(' | ');
+            if (data.hints && data.hints.length > 0) {
+                document.getElementById('ai-hints').innerText = data.hints.slice(0, 2).join(' | ');
+            }
         } catch (e) { }
     }
 
+    // 3. Запуск кода
     async function runCode() {
         const out = document.getElementById('output');
         out.innerText = ">>> Running code...\n";
@@ -99,8 +111,30 @@
         } catch (e) { out.innerText += "Execution failed."; }
     }
 
-    setInterval(sync, 2000);
-    setInterval(getAIReview, 5000);
+    // 4. Разрешение конфликтов для текущей строки (ЭТАП 2 - НОВОЕ)
+    async function resolveLineConflict() {
+        const currentLine = editor.getCopyText() || editor.session.getLine(editor.getCursorPosition().row);
+        const log = document.getElementById('log');
+        log.innerText = "AI thinking...";
+
+        try {
+            const res = await fetch('/resolve-conflict/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    variant_a: currentLine,
+                    variant_b: "optimized version of " + currentLine
+                })
+            });
+            const data = await res.json();
+            alert("AI Suggestion:\n" + data.resolved_code);
+            log.innerText = "Conflict resolved.";
+        } catch (e) { log.innerText = "Error resolving conflict."; }
+    }
+
+    // Интервалы
+    setInterval(sync, 3000);
+    setInterval(getAIReview, 10000); // Раз в 10 секунд для экономии токенов
 </script>
 </body>
 </html>
