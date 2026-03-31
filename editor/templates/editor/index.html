@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>AI-Collaborative IDE 2.0</title>
+    <style>
+        body { background: #1e1e1e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background: #252526; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        
+        /* Сайдбар */
+        .sidebar { width: 250px; background: #252526; border-right: 1px solid #333; padding: 15px; display: flex; flex-direction: column; }
+        .sidebar h3 { font-size: 12px; text-transform: uppercase; color: #858585; letter-spacing: 1px; }
+        .user-item { display: flex; align-items: center; margin-bottom: 10px; font-size: 14px; }
+        .user-status { width: 8px; height: 8px; background: #4ec9b0; border-radius: 50%; margin-right: 10px; }
+
+        /* Редактор */
+        .editor-area { flex: 1; display: flex; flex-direction: column; }
+        #editor { flex: 1; font-size: 14px; }
+
+        /* Панель AI */
+        #ai-panel { background: #1a2a3a; border-left: 4px solid #007acc; padding: 12px; font-size: 13px; }
+        .ai-header { font-weight: bold; color: #4fc1ff; margin-bottom: 4px; }
+
+        /* Терминал */
+        .terminal { height: 180px; background: #000; border-top: 1px solid #333; padding: 10px; font-family: monospace; color: #00ff00; overflow-y: auto; }
+        
+        .btn-run { background: #28a745; color: white; border: none; padding: 8px 16px; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-run:hover { background: #218838; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="font-size: 16px;">🚀 HACKATHON_PROJECT <span style="color: #6a9955;">— main.py</span></div>
+    <button class="btn-run" onclick="runCode()">▶ Run Code</button>
+</header>
+
+<div class="main-container">
+    <div class="sidebar">
+        <h3>Session Dashboard</h3>
+        <div class="user-item"><div class="user-status"></div> Student 1 (You)</div>
+        <div class="user-item"><div class="user-status" style="background: #ce9178;"></div> Student 2</div>
+        <div id="log" style="margin-top: 20px; font-size: 11px; color: #666;">Waiting for changes...</div>
+    </div>
+
+    <div class="editor-area">
+        <div id="ai-panel">
+            <div class="ai-header">🤖 AI REVIEWER</div>
+            <div id="ai-hints">Analyzing code patterns...</div>
+        </div>
+        <div id="editor">{{ doc.content }}</div>
+    </div>
+</div>
+
+<div class="terminal" id="output">Terminal initialized. Ready to execute Python...</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+<script>
+    var editor = ace.edit("editor");
+    editor.setTheme("ace/theme/monokai");
+    editor.session.setMode("ace/mode/python");
+    editor.setShowPrintMargin(false);
+
+    async function sync() {
+        const content = editor.getValue();
+        try {
+            await fetch('/sync/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: 'content=' + encodeURIComponent(content)
+            });
+            const res = await fetch('/sync/');
+            const data = await res.json();
+            if (data.content !== editor.getValue()) {
+                const pos = editor.getCursorPosition();
+                editor.setValue(data.content, -1);
+                editor.moveCursorToPosition(pos);
+                document.getElementById('log').innerText = "Last sync: " + new Date().toLocaleTimeString();
+            }
+        } catch (e) { console.log("Sync error"); }
+    }
+
+    async function getAIReview() {
+        try {
+            const res = await fetch('/ai-review/');
+            const data = await res.json();
+            document.getElementById('ai-hints').innerText = data.hints.join(' | ');
+        } catch (e) { }
+    }
+
+    async function runCode() {
+        const out = document.getElementById('output');
+        out.innerText = ">>> Running code...\n";
+        try {
+            const res = await fetch('/run/');
+            const data = await res.json();
+            out.innerText += data.output;
+        } catch (e) { out.innerText += "Execution failed."; }
+    }
+
+    setInterval(sync, 2000);
+    setInterval(getAIReview, 5000);
+</script>
+</body>
+</html>
