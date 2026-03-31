@@ -170,17 +170,56 @@
 
     <div id="notifications"></div>
 
-    <header>
-        <div style="font-size: 16px;">🚀 HACKATHON_PROJECT <span style="color: #6a9955;">— main.py</span></div>
+<header style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px;">
+    <div style="font-size: 16px;">
+        🚀 HACKATHON_PROJECT <span style="color: #6a9955;">— main.py</span>
+    </div>
+    
+    <div style="display: flex; align-items: center; gap: 15px;">
         <button class="btn-run" onclick="runCode()">▶ Run Code</button>
-    </header>
+        
+        <div class="user-control">
+            {% if user.is_authenticated %}
+                <a href="{% url 'profile' %}" class="btn-profile">
+                    👤 {{ user.username }}
+                </a>
+                <a href="{% url 'logout' %}" style="color: #f44336; text-decoration: none; font-size: 12px; margin-left: 10px;">Выйти</a>
+            {% else %}
+                <a href="{% url 'register' %}" class="btn-profile">Войти / Регистрация</a>
+            {% endif %}
+        </div>
+    </div>
+</header>
 
     <div class="main-container">
         <div class="sidebar">
-            <h3>Session Dashboard</h3>
-            <div class="user-item"><div class="user-status"></div> Student 1 (You)</div>
-            <div class="user-item"><div class="user-status" style="background: #ce9178;"></div> Student 2</div>
-            <div id="log" style="margin-top: 20px; font-size: 11px; color: #666;">Waiting for changes...</div>
+            <div style="padding: 10px; border-bottom: 1px solid #3c3c3c; margin-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 14px; color: #6a9955;">
+                    📁 Комната: {{ current_project.name|default:"Локальная сессия" }}
+                </h3>
+                {% if not current_project %}
+                    <a href="{% url 'create_project' %}" style="color: #569cd6; font-size: 11px; text-decoration: none;">+ Создать комнату</a>
+                {% endif %}
+            </div>
+
+            <div id="members-section">
+                <p style="font-size: 11px; color: #888; margin-left: 10px;">УЧАСТНИКИ:</p>
+                
+                {% if current_project %}
+                    {% for member in current_project.members.all %}
+                        <div class="user-item">
+                            <div class="user-status" style="background: {% if member.is_authenticated %}#6a9955{% else %}#888{% endif %};"></div>
+                            {{ member.username }} {% if member == user %}(Вы){% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="user-item"><div class="user-status"></div> {{ user.username|default:"Student 1" }} (You)</div>
+                {% endif %}
+            </div>
+
+            <div id="log" style="margin-top: 20px; font-size: 11px; color: #666; padding: 10px;">
+                Waiting for changes...
+            </div>
         </div>
 
         <div class="editor-area">
@@ -194,12 +233,19 @@
 
     <div class="terminal" id="output">Terminal initialized. Ready to execute Python...</div>
 
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
     <script>
-        var editor = ace.edit("editor");
-        editor.setTheme("ace/theme/monokai");
-        editor.session.setMode("ace/mode/python");
-        editor.setShowPrintMargin(false);
+        var editor; 
+        window.onload = function() {
+            // Этот код сработает только когда весь HTML уже готов
+            editor = ace.edit("editor");
+            editor.setTheme("ace/theme/monokai");
+            editor.session.setMode("ace/mode/python");
+            editor.setShowPrintMargin(false);
+            
+            console.log("Редактор успешно загружен!");
+        };
 
         // Функция для уведомлений
         function showToast(message) {
@@ -222,22 +268,32 @@
         });
 
         async function sync() {
+            if (isSyncing) return;
             const content = editor.getValue();
+            isSyncing = true;
+
             try {
-                await fetch('/sync/', {
+                const response = await fetch('/sync/', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'content=' + encodeURIComponent(content)
+                    body: `content=${encodeURIComponent(content)}&version=${currentVersion}`
                 });
-                const res = await fetch('/sync/');
-                const data = await res.json();
-                if (data.content !== editor.getValue()) {
-                    const pos = editor.getCursorPosition();
-                    editor.setValue(data.content, -1);
-                    editor.moveCursorToPosition(pos);
-                    document.getElementById('log').innerText = "Last sync: " + new Date().toLocaleTimeString();
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentVersion = data.new_version; // Обновляем версию при успехе
+                } else if (response.status === 409) {
+                    // ВАЖНО: Синхронизируем номер версии с серверным, чтобы остановить конфликт
+                    currentVersion = data.current_version; 
+                    
+                    // Если на сервере код новее — подтягиваем его
+                    if (data.content && data.content !== editor.getValue()) {
+                        editor.setValue(data.content, -1);
+                    }
                 }
-            } catch (e) { console.log("Sync error"); }
+            } catch (e) { console.error(e); }
+            finally { isSyncing = false; }
         }
 
         // AI Ревьюер с индикацией работы
@@ -256,13 +312,31 @@
 
         async function runCode() {
             const out = document.getElementById('output');
+            // Получаем код из редактора Ace
+            const codeToRun = editor.getValue(); 
+            
             out.innerText = ">>> Running code...\n";
+            
             try {
-                const res = await fetch('/run/');
+                const res = await fetch('/run/', {
+                    method: 'POST', // ТУТ ИСПРАВЛЯЕМ GET НА POST
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    // Передаем код в теле запроса
+                    body: 'content=' + encodeURIComponent(codeToRun)
+                });
+                
                 const data = await res.json();
-                out.innerText += data.output;
-                showToast("Код успешно выполнен");
-            } catch (e) { out.innerText += "Execution failed."; }
+                
+                if (data.output) {
+                    out.innerText = ">>> Result:\n" + data.output;
+                } else {
+                    out.innerText = ">>> Код выполнен без вывода.";
+                }
+            } catch (e) { 
+                out.innerText = ">>> Ошибка соединения с сервером"; 
+            }
         }
 
         // Имитация уведомления при старте
