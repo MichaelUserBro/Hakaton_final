@@ -30,7 +30,6 @@
             overflow: hidden;
         }
 
-        /* Сайдбар */
         .sidebar {
             width: 250px;
             background: #252526;
@@ -40,18 +39,14 @@
             flex-direction: column;
         }
 
-            .sidebar h3 {
-                font-size: 11px;
-                text-transform: uppercase;
-                color: #858585;
-                letter-spacing: 1px;
-                margin-bottom: 15px;
-                margin-top: 20px;
-            }
-
-                .sidebar h3:first-child {
-                    margin-top: 0;
-                }
+        .sidebar h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #858585;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            margin-top: 20px;
+        }
 
         .user-item {
             display: flex;
@@ -68,7 +63,6 @@
             margin-right: 10px;
         }
 
-        /* Редактор */
         .editor-area {
             flex: 1;
             display: flex;
@@ -81,7 +75,6 @@
             font-size: 14px;
         }
 
-        /* Панель AI с твоей анимацией пульсации */
         #ai-panel {
             background: #1a2a3a;
             border-left: 4px solid #007acc;
@@ -93,23 +86,15 @@
             justify-content: space-between;
         }
 
-            #ai-panel.analyzing {
-                border-left-color: #4ec9b0;
-                animation: pulse 2s infinite;
-            }
+        #ai-panel.analyzing {
+            border-left-color: #4ec9b0;
+            animation: pulse 2s infinite;
+        }
 
         @keyframes pulse {
-            0% {
-                background: #1a2a3a;
-            }
-
-            50% {
-                background: #263e55;
-            }
-
-            100% {
-                background: #1a2a3a;
-            }
+            0% { background: #1a2a3a; }
+            50% { background: #263e55; }
+            100% { background: #1a2a3a; }
         }
 
         .ai-header {
@@ -124,7 +109,6 @@
             flex: 1;
         }
 
-        /* Терминал */
         .terminal {
             height: 160px;
             background: #000;
@@ -136,7 +120,6 @@
             white-space: pre-wrap;
         }
 
-        /* Твои уведомления */
         #notifications {
             position: fixed;
             top: 60px;
@@ -157,16 +140,10 @@
         }
 
         @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-            }
-
-            to {
-                transform: translateX(0);
-            }
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
         }
 
-        /* Кнопки */
         .btn {
             border: none;
             padding: 8px 16px;
@@ -181,9 +158,7 @@
             color: white;
         }
 
-            .btn-run:hover {
-                background: #218838;
-            }
+        .btn-run:hover { background: #218838; }
 
         .btn-ai {
             background: #007acc;
@@ -192,10 +167,6 @@
             width: 100%;
             font-size: 12px;
         }
-
-            .btn-ai:hover {
-                background: #005a9e;
-            }
     </style>
 </head>
 <body>
@@ -237,87 +208,114 @@
         editor.session.setMode("ace/mode/python");
         editor.setShowPrintMargin(false);
 
-        // Переменная для хранения версии кода (ВАЖНО для работы с новым бэкендом)
-        let currentVersion = 0;
-
         function showToast(message) {
             const container = document.getElementById('notifications');
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.innerText = message;
             container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                setTimeout(() => toast.remove(), 500); 
+            }, 4000);
         }
 
-        // 1. Новая логика синхронизации с поддержкой версий (чтобы избежать ошибки 409)
         async function sync() {
             const content = editor.getValue();
             const formData = new FormData();
             formData.append('content', content);
-            formData.append('version', currentVersion); // Отправляем версию
-
             try {
-                const res = await fetch('/sync/', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (res.status === 409) {
-                    console.warn("Конфликт версий! Кто-то другой обновил код.");
-                    showToast("Внимание: код был изменен другим участником");
-                }
-
+                const res = await fetch('/sync/', { method: 'POST', body: formData });
                 const data = await res.json();
-                // Обновляем локальную версию из ответа сервера
-                if (data.version) currentVersion = data.version;
-
                 if (data.content && data.content !== editor.getValue()) {
                     const pos = editor.getCursorPosition();
                     editor.setValue(data.content, -1);
                     editor.moveCursorToPosition(pos);
-                    document.getElementById('log').innerText = "Last sync: " + new Date().toLocaleTimeString() + " (v" + currentVersion + ")";
+                    document.getElementById('log').innerText = "Last sync: " + new Date().toLocaleTimeString();
                 }
             } catch (e) { console.error("Sync error"); }
         }
 
-        // 2. Обновленный вызов AI-анализа через новый эндпоинт /analyze/
+        // Исправлено: путь изменен на /ai-review/ для совпадения с urls.py
         async function getAIReview() {
             const aiPanel = document.getElementById('ai-panel');
+            const hintsElement = document.getElementById('ai-hints');
             aiPanel.classList.add('analyzing');
 
-            const formData = new FormData();
-            formData.append('content', editor.getValue());
-
             try {
-                const res = await fetch('/analyze/', {
+                const res = await fetch('/ai-review/', {
                     method: 'POST',
-                    body: formData
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: editor.getValue() })
                 });
                 const data = await res.json();
                 if (data.hints) {
-                    document.getElementById('ai-hints').innerText = data.hints.join(' | ');
+                    hintsElement.innerText = data.hints.join(' | ');
                 }
             } catch (e) {
-                console.error("AI Analysis error");
+                console.error("AI Review error");
             } finally {
                 setTimeout(() => aiPanel.classList.remove('analyzing'), 1500);
             }
         }
 
-        async function runCode() {
-            const out = document.getElementById('output');
-            out.innerText = ">>> Running code...\n";
+        // Функция для кнопки "Fix Current Line" (Этап 2)
+        async function resolveLineConflict() {
+            const cursor = editor.getCursorPosition();
+            const currentLine = editor.session.getLine(cursor.row);
+            
+            showToast("AI анализирует строку...");
+
             try {
-                const res = await fetch('/run/');
+                const res = await fetch('/resolve-conflict/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        variant_a: currentLine,
+                        variant_b: "" // В данном контексте передаем одну строку для улучшения
+                    })
+                });
                 const data = await res.json();
-                out.innerText += data.output;
-                showToast("Код успешно выполнен");
-            } catch (e) { out.innerText += "Execution failed."; }
+                if (data.best_variant) {
+                    showToast("Решение найдено!");
+                    // Для примера выводим в лог, можно сделать автозамену
+                    console.log("AI рекомендует:", data.best_variant);
+                }
+            } catch (e) {
+                showToast("Ошибка ИИ");
+            }
         }
 
-        // Интервалы
-        setInterval(sync, 3000);
-        setInterval(getAIReview, 10000);
+        // Запуск кода с разделением потоков (Этап 3)
+        async function runCode() {
+            const out = document.getElementById('output');
+            out.innerText = ">>> Running...\n";
+            out.style.color = "#00ff00";
+
+            try {
+                const res = await fetch('/run/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: editor.getValue() })
+                });
+                const data = await res.json();
+                
+                out.innerText = "";
+                if (data.stderr) {
+                    out.style.color = "#ff5555"; // Ошибки — красным
+                    out.innerText = data.stderr;
+                } else {
+                    out.style.color = "#50fa7b"; // Успех — зеленым
+                    out.innerText = data.stdout || "Success (no output)";
+                }
+            } catch (e) {
+                out.style.color = "#ff5555";
+                out.innerText = "Error: " + e;
+            }
+        }
+
+        setInterval(sync, 5000);
+        setInterval(getAIReview, 15000);
     </script>
 </body>
 </html>

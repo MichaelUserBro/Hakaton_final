@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Загружаем переменные окружения из .env
 load_dotenv()
 
-# Константа для движка выполнения кода
+# Константа для движка выполнения кода (Judge0)
 JUDGE0_URL = "https://ce.judge0.com/submissions?wait=true"
 
 # --- Абстрактные интерфейсы ---
@@ -36,7 +36,7 @@ class AIService(BaseAIService):
             base_url="https://openrouter.ai/api/v1",
             api_key=os.getenv("OPENROUTER_API_KEY"),
         )
-        # Выбираем стабильную бесплатную модель Gemini Flash
+        # ВОЗВРАЩАЕМ ТВОЮ РАБОЧУЮ МОДЕЛЬ
         self.model = "deepseek/deepseek-chat"
         
         self.system_prompt = (
@@ -57,7 +57,6 @@ class AIService(BaseAIService):
                     {"role": "system", "content": self.system_prompt},
                     {"role": "user", "content": f"Проанализируй этот код:\n{code}"},
                 ],
-                # Ограничиваем токены, чтобы не вылетать по ошибке 402
                 max_tokens=500,
                 response_format={'type': 'json_object'}
             )
@@ -97,7 +96,10 @@ class AIService(BaseAIService):
 
 class PistonCodeRunner(BaseRunnerService):
     def run(self, code: str):
-        """Отправляет код на выполнение в песочницу Judge0."""
+        """
+        Отправляет код на выполнение в песочницу Judge0.
+        Реализация Этапа 3: разделение stdout и stderr.
+        """
         payload = {
             "source_code": code,
             "language_id": 71,  # Python 3
@@ -107,12 +109,18 @@ class PistonCodeRunner(BaseRunnerService):
             response = requests.post(JUDGE0_URL, json=payload, timeout=10)
             result = response.json()
             
-            # Приоритет вывода: stdout -> compile_output -> stderr
-            output = (
-                result.get('stdout') or 
-                result.get('compile_output') or 
-                result.get('stderr')
-            )
-            return output if output else "Код выполнен (пустой вывод)"
+            # Разделяем потоки вывода
+            stdout = result.get('stdout') or ""
+            stderr = result.get('stderr') or result.get('compile_output') or ""
+            
+            return {
+                "stdout": stdout,
+                "stderr": stderr,
+                "error": bool(stderr)
+            }
         except Exception as e:
-            return f"Ошибка песочницы: {str(e)}"
+            return {
+                "stdout": "",
+                "stderr": f"Ошибка песочницы: {str(e)}",
+                "error": True
+            }
