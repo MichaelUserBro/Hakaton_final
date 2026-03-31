@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>AI-Collaborative IDE 2.0</title>
+    <title>AI IDE 2.0 | Hackathon Edition</title>
     <style>
         body {
             background: #1e1e1e;
@@ -41,18 +41,23 @@
         }
 
             .sidebar h3 {
-                font-size: 12px;
+                font-size: 11px;
                 text-transform: uppercase;
                 color: #858585;
                 letter-spacing: 1px;
-                margin-top: 0;
+                margin-bottom: 15px;
+                margin-top: 20px;
             }
+
+                .sidebar h3:first-child {
+                    margin-top: 0;
+                }
 
         .user-item {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .user-status {
@@ -76,13 +81,16 @@
             font-size: 14px;
         }
 
-        /* Панель AI с анимацией */
+        /* Панель AI с твоей анимацией пульсации */
         #ai-panel {
             background: #1a2a3a;
             border-left: 4px solid #007acc;
             padding: 12px;
             font-size: 13px;
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
             #ai-panel.analyzing {
@@ -107,21 +115,28 @@
         .ai-header {
             font-weight: bold;
             color: #4fc1ff;
-            margin-bottom: 4px;
+            margin-right: 10px;
+        }
+
+        #ai-hints {
+            color: #dcdcdc;
+            font-style: italic;
+            flex: 1;
         }
 
         /* Терминал */
         .terminal {
-            height: 180px;
+            height: 160px;
             background: #000;
             border-top: 1px solid #333;
             padding: 10px;
-            font-family: monospace;
+            font-family: 'Consolas', monospace;
             color: #00ff00;
             overflow-y: auto;
+            white-space: pre-wrap;
         }
 
-        /* Уведомления */
+        /* Твои уведомления */
         #notifications {
             position: fixed;
             top: 60px;
@@ -151,18 +166,35 @@
             }
         }
 
-        .btn-run {
-            background: #28a745;
-            color: white;
+        /* Кнопки */
+        .btn {
             border: none;
             padding: 8px 16px;
             cursor: pointer;
             border-radius: 4px;
             font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .btn-run {
+            background: #28a745;
+            color: white;
         }
 
             .btn-run:hover {
                 background: #218838;
+            }
+
+        .btn-ai {
+            background: #007acc;
+            color: white;
+            margin-top: 10px;
+            width: 100%;
+            font-size: 12px;
+        }
+
+            .btn-ai:hover {
+                background: #005a9e;
             }
     </style>
 </head>
@@ -172,27 +204,31 @@
 
     <header>
         <div style="font-size: 16px;">🚀 HACKATHON_PROJECT <span style="color: #6a9955;">— main.py</span></div>
-        <button class="btn-run" onclick="runCode()">▶ Run Code</button>
+        <button class="btn btn-run" onclick="runCode()">▶ Run Code</button>
     </header>
 
     <div class="main-container">
         <div class="sidebar">
-            <h3>Session Dashboard</h3>
+            <h3>Collaborators</h3>
             <div class="user-item"><div class="user-status"></div> Student 1 (You)</div>
             <div class="user-item"><div class="user-status" style="background: #ce9178;"></div> Student 2</div>
-            <div id="log" style="margin-top: 20px; font-size: 11px; color: #666;">Waiting for changes...</div>
+
+            <h3>AI Tools</h3>
+            <button class="btn btn-ai" onclick="resolveLineConflict()">✨ Fix Current Line</button>
+
+            <div id="log" style="margin-top: auto; font-size: 11px; color: #666;">Ready.</div>
         </div>
 
         <div class="editor-area">
             <div id="ai-panel">
-                <div class="ai-header">🤖 AI REVIEWER</div>
+                <div class="ai-header">🤖 AI REVIEW:</div>
                 <div id="ai-hints">Analyzing code patterns...</div>
             </div>
             <div id="editor">{{ doc.content }}</div>
         </div>
     </div>
 
-    <div class="terminal" id="output">Terminal initialized. Ready to execute Python...</div>
+    <div class="terminal" id="output">Terminal initialized. Ready for execution...</div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
     <script>
@@ -200,8 +236,8 @@
         editor.setTheme("ace/theme/monokai");
         editor.session.setMode("ace/mode/python");
         editor.setShowPrintMargin(false);
+        editor.setOptions({ enableBasicAutocompletion: true, enableLiveAutocompletion: true });
 
-        // Функция для уведомлений
         function showToast(message) {
             const container = document.getElementById('notifications');
             const toast = document.createElement('div');
@@ -211,14 +247,10 @@
             setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
         }
 
-        // Горячие клавиши (Ctrl+S)
         editor.commands.addCommand({
             name: 'save',
             bindKey: { win: 'Ctrl-S', mac: 'Command-S' },
-            exec: function (editor) {
-                sync();
-                showToast("Код сохранен вручную (Ctrl+S)");
-            }
+            exec: function (editor) { sync(); showToast("Код сохранен вручную (Ctrl+S)"); }
         });
 
         async function sync() {
@@ -240,18 +272,17 @@
             } catch (e) { console.log("Sync error"); }
         }
 
-        // AI Ревьюер с индикацией работы
         async function getAIReview() {
             const aiPanel = document.getElementById('ai-panel');
             aiPanel.classList.add('analyzing');
             try {
                 const res = await fetch('/ai-review/');
                 const data = await res.json();
-                document.getElementById('ai-hints').innerText = data.hints.join(' | ');
+                if (data.hints) {
+                    document.getElementById('ai-hints').innerText = data.hints.join(' | ');
+                }
             } catch (e) { }
-            finally {
-                setTimeout(() => aiPanel.classList.remove('analyzing'), 1500);
-            }
+            finally { setTimeout(() => aiPanel.classList.remove('analyzing'), 1500); }
         }
 
         async function runCode() {
@@ -265,11 +296,24 @@
             } catch (e) { out.innerText += "Execution failed."; }
         }
 
-        // Имитация уведомления при старте
-        setTimeout(() => showToast("Студент 2 подключился к сессии"), 2000);
+        async function resolveLineConflict() {
+            const log = document.getElementById('log');
+            log.innerText = "AI thinking...";
+            try {
+                const res = await fetch('/resolve-conflict/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: editor.session.getLine(editor.getCursorPosition().row) })
+                });
+                const data = await res.json();
+                showToast("AI предложил исправление!");
+                log.innerText = "Conflict resolved.";
+            } catch (e) { log.innerText = "Error resolving conflict."; }
+        }
 
-        setInterval(sync, 2000);
-        setInterval(getAIReview, 5000);
+        setTimeout(() => showToast("Студент 2 подключился к сессии"), 2000);
+        setInterval(sync, 3000);
+        setInterval(getAIReview, 10000);
     </script>
 </body>
 </html>
