@@ -1,8 +1,8 @@
 import os
 import json
 import requests
+import google.generativeai as genai
 from abc import ABC, abstractmethod
-from openai import OpenAI
 from dotenv import load_dotenv
 
 # Загружаем переменные окружения из .env
@@ -31,75 +31,62 @@ class BaseRunnerService(ABC):
 
 class AIService(BaseAIService):
     def __init__(self):
-        # Используем OpenRouter как прокси
-        self.client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=os.getenv("OPENROUTER_API_KEY"),
-        )
-        # ВОЗВРАЩАЕМ ТВОЮ РАБОЧУЮ МОДЕЛЬ
-        self.model = "deepseek/deepseek-chat"
+        # Инициализация Gemini
+        api_key = os.getenv("GOOGLE_API_KEY")
+        genai.configure(api_key=api_key)
         
-        self.system_prompt = (
-            "Ты — эксперт по Python. Анализируй код на наличие антипаттернов и уязвимостей. "
-            "Отвечай СТРОГО в формате JSON: {'hints': ['совет 1', 'совет 2']}. "
-            "Не пиши ничего, кроме этого JSON."
+        # Используем 1.5-flash-8b: у нее выше лимиты запросов на бесплатном тарифе
+        self.model = genai.GenerativeModel('models/gemini-flash-latest')
+        
+        self.system_instructions = (
+            "Ты — эксперт по Python. Дай 3 очень коротких совета по коду. "
+            "Отвечай СТРОГО в формате JSON: {'hints': ['совет 1', 'совет 2', 'совет 3']}. "
+            "Не пиши пояснений вне JSON. Используй русский язык."
         )
 
     def analyze_code(self, code: str):
-        """Отправляет код нейросети для получения советов в формате JSON."""
-        if not os.getenv("OPENROUTER_API_KEY"):
-            return ["AI Error: Ключ OPENROUTER_API_KEY не найден в .env"]
+        """Отправляет код Gemini для получения советов в формате JSON."""
+        if not os.getenv("GOOGLE_API_KEY"):
+            return ["AI Error: Ключ GOOGLE_API_KEY не найден"]
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": f"Проанализируй этот код:\n{code}"},
-                ],
-                max_tokens=500,
-                response_format={'type': 'json_object'}
-            )
+            prompt = f"{self.system_instructions}\n\nКод для анализа:\n{code}"
+            response = self.model.generate_content(prompt)
             
-            result = json.loads(response.choices[0].message.content)
-            return result.get('hints', ["AI: Ошибок не обнаружено."])
+            # Очистка текста от markdown-разметки для корректного парсинга JSON
+            raw_text = response.text.strip()
+            clean_json = raw_text.replace('```json', '').replace('```', '').strip()
+            
+            result = json.loads(clean_json)
+            return result.get('hints', ["AI: Советы не сформированы."])
             
         except Exception as e:
-            return [f"AI Service Error: {str(e)}"]
+            # Выводим сокращенную ошибку, чтобы не перегружать интерфейс
+            return [f"AI Error: {str(e)[:100]}"]
 
     def resolve_conflict(self, code_variant_a: str, code_variant_b: str):
         """Просит AI выбрать лучший вариант из двух предложенных."""
-        if not os.getenv("OPENROUTER_API_KEY"):
+        if not os.getenv("GOOGLE_API_KEY"):
             return "Ошибка: API ключ не найден."
 
         prompt = (
-            f"У меня есть два варианта одной строки кода:\n"
-            f"Вариант А: {code_variant_a}\n"
-            f"Вариант Б: {code_variant_b}\n"
-            f"Выбери лучший вариант или предложи идеальный объединенный вариант. "
-            f"Ответь коротко, только кодом и кратким пояснением в одну строку."
+            f"Ты помощник по коду. Есть два варианта:\n"
+            f"А: {code_variant_a}\n"
+            f"Б: {code_variant_b}\n"
+            f"Выбери лучший или объедини. Ответь ТОЛЬКО кодом (без пояснений)."
         )
 
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "Ты — помощник по код-ревью."},
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=300
-            )
-            return response.choices[0].message.content
+            response = self.model.generate_content(prompt)
+            # Очищаем результат от оберток кода
+            return response.text.strip().replace('```python', '').replace('```', '')
         except Exception as e:
-            return f"Ошибка при разрешении конфликта: {str(e)}"
+            return f"Ошибка кнопки: {str(e)[:50]}"
 
 
 class PistonCodeRunner(BaseRunnerService):
     def run(self, code: str):
-        """
-        Отправляет код на выполнение в песочницу Judge0.
-        Реализация Этапа 3: разделение stdout и stderr.
-        """
+        """Отправляет код на выполнение в песочницу Judge0."""
         payload = {
             "source_code": code,
             "language_id": 71,  # Python 3
@@ -109,7 +96,6 @@ class PistonCodeRunner(BaseRunnerService):
             response = requests.post(JUDGE0_URL, json=payload, timeout=10)
             result = response.json()
             
-            # Разделяем потоки вывода
             stdout = result.get('stdout') or ""
             stderr = result.get('stderr') or result.get('compile_output') or ""
             
