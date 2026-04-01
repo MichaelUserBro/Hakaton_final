@@ -257,9 +257,9 @@
 
             .settings-group label {
                 display: block;
-                font-size: 10px;
+                font-size: 11px; /* Чуть увеличил */
                 color: #858585;
-                margin-bottom: 6px;
+                margin-bottom: 8px;
                 text-transform: uppercase;
             }
 
@@ -268,27 +268,33 @@
             background: var(--bg-main);
             color: var(--text);
             border: 1px solid var(--border);
-            padding: 10px;
+            padding: 12px; /* Увеличил отступы */
             border-radius: 6px;
-            font-size: 13px;
+            font-size: 14px; /* Увеличил шрифт в селектах */
             box-sizing: border-box;
         }
 
         .btn-save, .btn-modal-primary {
             width: 100%;
-            padding: 12px;
+            padding: 14px; /* Кнопка стала больше */
             background: var(--accent);
             color: white;
             border: none;
             border-radius: 6px;
             font-weight: bold;
+            font-size: 14px; /* Шрифт в кнопке больше */
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 15px;
+            transition: 0.2s opacity;
         }
 
         .btn-save {
             background: var(--success);
         }
+
+            .btn-save:hover {
+                opacity: 0.9;
+            }
     </style>
 </head>
 <body class="dark-theme">
@@ -462,6 +468,59 @@
         editor.setTheme(editorTheme);
         editor.setOptions({ fontSize: fontSize });
     }
+
+    // --- AI FUNCTIONS ---
+    async function applyAI(type) {
+        addEvent('AI', `Processing ${type}...`);
+        const btnLog = document.getElementById('log');
+        btnLog.innerText = "AI is thinking...";
+
+        try {
+            const res = await fetch('/ai/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({
+                    type: type,
+                    code: editor.getValue(),
+                    project_id: projectId
+                })
+            });
+            const data = await res.json();
+            if (data.code) {
+                editor.setValue(data.code, -1);
+                addEvent('AI', `${type} applied!`);
+            }
+        } catch (e) {
+            console.error("AI Error:", e);
+            addEvent('System', 'AI Error');
+        } finally {
+            btnLog.innerText = "Ready.";
+        }
+    }
+
+    async function fixError() {
+        const errorText = document.getElementById('output').innerText;
+        addEvent('AI', 'Attempting to fix error...');
+
+        try {
+            const res = await fetch('/fix/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({
+                    error: errorText,
+                    code: editor.getValue()
+                })
+            });
+            const data = await res.json();
+            if (data.code) {
+                editor.setValue(data.code, -1);
+                addEvent('AI', 'Error fixed!');
+            }
+        } catch (e) {
+            addEvent('System', 'Fix failed');
+        }
+    }
+    // --------------------
 
     function addEvent(user, action) {
         const container = document.getElementById('timeline-content');
