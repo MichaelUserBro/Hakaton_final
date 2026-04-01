@@ -1,0 +1,16 @@
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.index, name='index'),
+    path('run/', views.run_code, name='run_code'),
+    path('sync/', views.sync_code, name='sync_code'),
+    # Твой универсальный маршрут для всех функций ИИ
+    path('ai-action/', views.ai_action, name='ai_action'), 
+    
+    path('register/', views.register, name='register'),
+    path('profile/', views.profile, name='profile'),
+    path('logout/', views.logout_user, name='logout'),
+    path('create-project/', views.create_project, name='create_project'),
+    path('join/<uuid:token>/', views.join_project, name='join_project'),
+]
