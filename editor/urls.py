@@ -14,4 +14,5 @@ urlpatterns = [
     # Добавляем маршрут для логики конфликтов из Этапа 2
     path('resolve-conflict/', views.resolve_ai_conflict, name='resolve_ai_conflict'),
     path('analyze/', views.ai_review, name='ai_review'),
+    path('join/<uuid:token>/', views.join_project, name='join_project'),
 ]

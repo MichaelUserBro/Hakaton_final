@@ -201,10 +201,23 @@
             <h3 style="margin: 0; font-size: 14px; color: #6a9955;">
                 📁 Комната: {{ current_project.name|default:"Локальная сессия" }}
             </h3>
-            {% if not current_project %}
-                <a href="{% url 'create_project' %}" style="color: #569cd6; font-size: 11px; text-decoration: none;">+ Создать комнату</a>
-            {% endif %}
-        </div>
+            <div style="margin-bottom: 10px;">
+                <a href="{% url 'create_project' %}" style="color: #569cd6; font-size: 11px; text-decoration: none; border: 1px solid #333; padding: 4px 8px; border-radius: 4px;">
+                    + Создать новую комнату
+                </a>
+            </div>
+
+            <div style="margin-top: 15px;">
+                <p style="font-size: 10px; color: #888; margin-bottom: 5px;">МОИ КОМНАТЫ:</p>
+                {% for project in user.projects.all %}
+                    <div style="margin-bottom: 4px;">
+                        <a href="?project_id={{ project.id }}" 
+                        style="font-size: 12px; text-decoration: none; color: {% if project.id == current_project.id %}#6a9955{% else %}#ccc{% endif %};">
+                        {% if project.id == current_project.id %}▶{% else %}📁{% endif %} {{ project.name }}
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
 
         <div id="members-section">
             <p style="font-size: 11px; color: #888; margin-left: 10px;">УЧАСТНИКИ:</p>

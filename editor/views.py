@@ -127,9 +127,16 @@ def register(request):
         form = UserRegisterForm()
     return render(request, 'editor/register.html', {'form': form})
 
-@login_required # Эта строка не пустит на страницу анонимов
+@login_required
 def profile(request):
-    return render(request, 'editor/profile.html', {'user': request.user})
+    # Получаем комнаты, созданные текущим пользователем
+    user_created_rooms = request.user.created_projects.all()
+    
+    # Передаем всё одним словарем
+    return render(request, 'editor/profile.html', {
+        'user': request.user,
+        'created_rooms': user_created_rooms
+    })
 
 # editor/views.py
 from django.contrib.auth import logout
@@ -143,11 +150,16 @@ def create_project(request):
     if request.method == 'POST':
         project_name = request.POST.get('project_name')
         if project_name:
-            # Создаем проект
             new_project = Project.objects.create(name=project_name, creator=request.user)
-            # Добавляем создателя в список участников
             new_project.members.add(request.user)
-            return redirect('index')
+            
+            # Сразу создаем первый файл для этой комнаты
+            from .models import Document
+            Document.objects.create(project=new_project, name="main.py", content="")
+            
+            # ПРАВИЛЬНО: Редирект в созданную комнату
+            return redirect(f'/?project_id={new_project.id}')
+            
     return render(request, 'editor/create_project.html')
 
 
@@ -156,14 +168,32 @@ def index(request):
     current_project = None
     doc = None
 
-    # Проверяем, вошел ли пользователь в систему
     if request.user.is_authenticated:
-        # Пытаемся взять проект залогиненного пользователя
-        current_project = request.user.projects.last()
+        # Пытаемся получить конкретный ID из ссылки (?project_id=...)
+        project_id = request.GET.get('project_id')
+        
+        if project_id:
+            # Ищем конкретную комнату среди проектов пользователя
+            current_project = request.user.projects.filter(id=project_id).first()
+        
+        # Если ID не передан или проект не найден, берем последний из списка
+        if not current_project:
+            current_project = request.user.projects.last()
+
+        # Если проект найден (или взят последний), получаем его документ
         if current_project:
             doc = current_project.documents.first()
+            
+            # ВАЖНО: Если в комнате еще нет файла, создаем его "на лету"
+            if not doc:
+                from .models import Document
+                doc = Document.objects.create(
+                    project=current_project, 
+                    name="main.py", 
+                    content=""
+                )
 
-    # Логика сохранения (только если есть документ и пользователь вошел)
+    # Твоя логика сохранения (из image_742a1e.png)
     if request.method == 'POST' and doc:
         try:
             import json
@@ -177,7 +207,7 @@ def index(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
-    # В контекст передаем doc, чтобы в шаблоне было {{ doc.content }}
+    # Твой контекст и рендер
     context = {
         'current_project': current_project,
         'doc': doc,
@@ -239,3 +269,18 @@ def resolve_ai_conflict(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+
+from django.shortcuts import get_object_or_404
+
+def join_project(request, token):
+    # Ищем проект по его секретному токену
+    project = get_object_or_404(Project, invite_token=token)
+    
+    if request.user.is_authenticated:
+        # Добавляем пользователя в список участников
+        project.members.add(request.user)
+        return redirect('index') 
+    else:
+        # Если не вошел — отправляем на регистрацию
+        return redirect('register')
