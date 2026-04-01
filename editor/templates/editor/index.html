@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>AI IDE 2.0 | Hackathon Edition</title>
+    <style>
+        body { background: #1e1e1e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        header { background: #252526; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; z-index: 100; }
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 250px; background: #252526; border-right: 1px solid #333; padding: 15px; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+        .editor-area { flex: 1; display: flex; flex-direction: column; background: #1e1e1e; position: relative; }
+        #editor { flex: 1; width: 100%; font-size: 14px; }
+        
+        #terminal-container { height: 200px; min-height: 40px; background: #000; display: flex; flex-direction: column; position: relative; border-top: 1px solid #333; }
+        #terminal-resizer { height: 6px; background: #333; cursor: ns-resize; width: 100%; transition: background 0.2s; }
+        #terminal-resizer:hover { background: #007acc; }
+        .terminal-header { background: #1e1e1e; padding: 5px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .terminal-title { font-size: 11px; color: #858585; text-transform: uppercase; }
+        .terminal-content { flex: 1; padding: 10px; font-family: 'Consolas', monospace; color: #00ff00; overflow-y: auto; white-space: pre-wrap; font-size: 13px; }
+        
+        .btn { border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; font-size: 12px; text-decoration: none; display: inline-block; text-align: center; }
+        .btn-run { background: #28a745; color: white; }
+        .btn-ai { background: #3e3e42; color: #ccc; margin-top: 5px; width: 100%; text-align: left; border: 1px solid #454545; }
+        .btn-ai:hover { background: #007acc; color: white; border-color: #007acc; }
+        .btn-fix { background: #d9534f; color: white; margin-top: 15px; width: 100%; }
+        .btn-fix:hover { background: #c9302c; }
+        
+        .btn-create { background: #444; color: #fff; font-size: 10px; padding: 4px 8px; margin-bottom: 15px; border: 1px dashed #666; }
+        .project-link { display: block; color: #ccc; text-decoration: none; font-size: 13px; padding: 5px 8px; border-radius: 3px; margin-bottom: 2px; }
+        .project-link:hover { background: #37373d; color: #fff; }
+        .project-link.active { background: #37373d; color: #007acc; border-left: 2px solid #007acc; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="font-size: 16px;">🚀 AI_IDE_PRO <span style="color: #6a9955;">— {{ doc.name }}</span></div>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <button class="btn btn-run" onclick="runCode()">▶ Run Code</button>
+        <div class="user-control">
+            {% if user.is_authenticated %}
+                <span style="font-size: 13px;">👤 {{ user.username }}</span>
+                <a href="{% url 'logout' %}?next=/" style="color: #f44336; text-decoration: none; font-size: 13px; margin-left: 10px;">Выйти</a>
+            {% else %}
+                <a href="#" onclick="openModal('login')" style="color: #569cd6; text-decoration: none; font-size: 13px; margin-right: 10px;">Войти</a>
+                <a href="{% url 'register' %}" style="color: #569cd6; text-decoration: none; font-size: 13px;">Регистрация</a>
+            {% endif %}
+        </div>
+    </div>
+</header>
+<div id="loginModal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.7);">
+    <div style="background-color: #252526; margin: 10% auto; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); width: 320px; color: white; font-family: 'Segoe UI', sans-serif;">
+        <span onclick="closeModal('login')" style="float: right; cursor: pointer; color: #888; font-size: 24px;">&times;</span>
+        <h2 style="color: #569cd6; text-align: center; margin-top: 0;">Вход в аккаунт</h2>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; font-size: 14px; margin-bottom: 5px;">Логин или почта:</label>
+            <input type="text" id="loginUsername" style="width: 100%; padding: 10px; background: #3c3c3c; border: 1px solid #555; color: white; border-radius: 4px; box-sizing: border-box;">
+        </div>
+
+        <div style="margin-bottom: 20px;">
+            <label style="display: block; font-size: 14px; margin-bottom: 5px;">Пароль:</label>
+            <input type="password" id="loginPassword" style="width: 100%; padding: 10px; background: #3c3c3c; border: 1px solid #555; color: white; border-radius: 4px; box-sizing: border-box;">
+        </div>
+
+        <button onclick="submitLogin()" style="width: 100%; background-color: #007acc; color: white; border: none; padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer;">Войти</button>
+        
+        <p style="text-align: center; font-size: 12px; margin-top: 15px; color: #ccc;">
+            Нет аккаунта? <a href="#" onclick="closeModal('login'); openModal('register');" style="color: #569cd6; text-decoration: none;">Зарегистрироваться</a>
+        </p>
+    </div>
+</div>
+
+<!-- <div id="loginModal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div style="background-color: #1e1e1e; margin: 15% auto; padding: 20px; border: 1px solid #333; width: 300px; color: white; border-radius: 8px;">
+        <span onclick="closeModal('login')" style="float: right; cursor: pointer; color: #888;">&times;</span>
+        <h3 style="margin-top: 0; color: #569cd6;">Вход</h3>
+        <input type="text" id="loginUsername" placeholder="Логин" style="width: 100%; margin-bottom: 10px; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; box-sizing: border-box;">
+        <input type="password" id="loginPassword" placeholder="Пароль" style="width: 100%; margin-bottom: 15px; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; box-sizing: border-box;">
+        <button onclick="submitLogin()" style="width: 100%; background: #007acc; color: white; border: none; padding: 10px; cursor: pointer; font-weight: bold;">Войти</button>
+    </div>
+</div>
+
+<div id="registerModal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+    <div style="background-color: #1e1e1e; margin: 5% auto; padding: 25px; border: 1px solid #333; width: 350px; color: white; border-radius: 8px; font-family: sans-serif;">
+        <span onclick="closeModal('register')" style="float: right; cursor: pointer; color: #888; font-size: 20px;">&times;</span>
+        
+        <h2 style="color: #6a9955; text-align: center; margin-bottom: 20px;">Создать аккаунт</h2>
+        
+        <label style="display: block; font-size: 13px; margin-bottom: 5px;">Username:</label>
+        <input type="text" id="regUsername" style="width: 100%; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; box-sizing: border-box;">
+        <p style="font-size: 11px; color: #ccc; margin: 5px 0 15px 0;">Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.</p>
+
+        <label style="display: block; font-size: 13px; margin-bottom: 5px;">Email:</label>
+        <input type="email" id="regEmail" style="width: 100%; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; margin-bottom: 15px; box-sizing: border-box;">
+
+        <label style="display: block; font-size: 13px; margin-bottom: 5px;">Password:</label>
+        <input type="password" id="regPassword1" style="width: 100%; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; box-sizing: border-box;">
+        <ul style="font-size: 11px; color: #ccc; margin: 5px 0 15px 20px; padding: 0;">
+            <li>Your password must contain at least 8 characters.</li>
+            <li>Your password can't be entirely numeric.</li>
+        </ul>
+
+        <label style="display: block; font-size: 13px; margin-bottom: 5px;">Password confirmation:</label>
+        <input type="password" id="regPassword2" style="width: 100%; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; box-sizing: border-box;">
+        <p style="font-size: 11px; color: #ccc; margin: 5px 0 20px 0;">Enter the same password as before, for verification.</p>
+
+        <button onclick="submitRegister()" style="width: 100%; background: #28a745; color: white; border: none; padding: 12px; cursor: pointer; font-weight: bold; border-radius: 4px; font-size: 14px;">Зарегистрироваться</button>
+        
+        <div style="text-align: center; margin-top: 15px;">
+            <a href="#" onclick="closeModal('register')" style="color: #569cd6; text-decoration: none; font-size: 12px;">Назад к редактору</a>
+        </div>
+    </div>
+</div> -->
+
+<div class="main-container">
+    <div class="sidebar">
+        <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #6a9955;">📁 ПРОЕКТ</h3>
+        <a href="{% url 'create_project' %}" class="btn btn-create">+ Создать комнату</a>
+
+        <div style="margin-bottom: 20px;">
+            {% for project in user.projects.all %}
+                <a href="/?project_id={{ project.id }}" class="project-link {% if project.id == current_project.id %}active{% endif %}">
+                    ▶ {{ project.name }}
+                </a>
+            {% endfor %}
+        </div>
+
+        <h3 style="margin-top: 10px; font-size: 14px; color: #007acc;">✨ AI REFACTORING</h3>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <button class="btn btn-ai" onclick="applyAI('hints')">📝 Советы по улучшению</button>
+            <button class="btn btn-ai" onclick="applyAI('rename')">🏷 Провести renaming</button>
+            <button class="btn btn-ai" onclick="applyAI('readable')">📖 Улучшить читабельность</button>
+            <button class="btn btn-fix" onclick="fixError()">🐞 Исправить ошибку</button>
+        </div>
+
+        <div id="log" style="margin-top: auto; font-size: 11px; color: #666; padding-top: 20px;">Система готова.</div>
+    </div>
+
+    <div class="editor-area">
+        <div id="editor">{{ doc.content }}</div>
+
+        <div id="terminal-container">
+            <div id="terminal-resizer"></div>
+            <div class="terminal-header">
+                <span class="terminal-title">Console Output</span>
+                <div>
+                    <button class="btn" style="background: #444; color: #ccc;" onclick="clearOutput()">Очистить</button>
+                    <button class="btn" style="background: #444; color: #ccc;" onclick="toggleTerminal()">Свернуть</button>
+                </div>
+            </div>
+            <div class="terminal-content" id="output">Terminal initialized...</div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+<script>
+    var editor;
+    var currentVersion = parseInt("{{ doc.version|default:0 }}");
+    var projectId = "{{ current_project.id|default:'' }}";
+    var isSyncing = false;
+    var lastError = ""; 
+
+    window.onload = function() {
+        editor = ace.edit("editor");
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/python");
+        editor.setShowPrintMargin(false);
+        initResizer();
+
+        editor.on('change', () => {
+            document.getElementById('log').innerText = "Changes detected...";
+        });
+    };
+
+    function clearOutput() {
+        document.getElementById('output').innerText = "";
+        lastError = "";
+    }
+
+    async function applyAI(action) {
+        const selectedText = editor.getSelectedText();
+        const fullCode = editor.getValue();
+        const codeToProcess = selectedText || fullCode;
+        const isSelection = !!selectedText;
+
+        document.getElementById('log').innerText = "AI анализирует...";
+
+        try {
+            const res = await fetch('/ai-action/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ 
+                    code: codeToProcess,
+                    action: action 
+                })
+            });
+            const data = await res.json();
+
+            if (data.result) {
+                if (isSelection) {
+                    editor.session.replace(editor.getSelectionRange(), data.result);
+                } else {
+                    editor.setValue(data.result, -1);
+                }
+                document.getElementById('log').innerText = "AI: Успешно применено";
+            } else {
+                alert("Ошибка ИИ: " + (data.error || "Не удалось получить ответ"));
+            }
+        } catch (e) {
+            document.getElementById('log').innerText = "Ошибка соединения";
+        }
+    }
+
+    async function fixError() {
+        const outputText = document.getElementById('output').innerText;
+        const errorToFix = outputText.trim() !== "" ? outputText : lastError;
+
+        if (!errorToFix || errorToFix.includes("Terminal initialized")) {
+            alert("Сначала запустите код, чтобы в консоли появился лог ошибки.");
+            return;
+        }
+
+        document.getElementById('log').innerText = "ИИ анализирует ошибку...";
+    
+        try {
+            const res = await fetch('/ai-action/', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json', 
+                    'X-CSRFToken': '{{ csrf_token }}' 
+                },
+                body: JSON.stringify({ 
+                    code: editor.getValue(),
+                    error_log: errorToFix,
+                    action: 'fix_error' 
+                })
+            });
+            
+            const data = await res.json();
+
+            if (data.explanation) {
+                const userAgreed = confirm("Причина ошибки:\n" + data.explanation + "\n\nИсправить код автоматически?");
+                if (userAgreed && data.result) {
+                    editor.setValue(data.result, -1);
+                    document.getElementById('log').innerText = "Код исправлен!";
+                }
+            } else {
+                alert("ИИ не смог распознать ошибку.");
+            }
+        } catch (e) {
+            alert("Ошибка сети или сервера: " + e);
+        }
+    }
+
+    async function runCode() {
+        const out = document.getElementById('output');
+        out.innerText = ">>> Running code...\n";
+        try {
+            const res = await fetch('/run/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ code: editor.getValue() })
+            });
+            const data = await res.json();
+            
+            const content = data.stderr || data.stdout || "--- No output ---";
+            out.innerText = content;
+            out.style.color = data.stderr ? "#ff5555" : "#50fa7b";
+            
+            lastError = data.stderr ? content : "";
+        } catch (e) { 
+            out.innerText = "System Error: " + e; 
+            lastError = e.toString();
+        }
+    }
+
+    function toggleTerminal() {
+        const term = document.getElementById('terminal-container');
+        term.style.height = (term.style.height === '40px') ? '200px' : '40px';
+        editor.resize();
+    }
+
+    function initResizer() {
+        const resizer = document.getElementById('terminal-resizer');
+        const term = document.getElementById('terminal-container');
+        let isResizing = false;
+        resizer.addEventListener('mousedown', () => { isResizing = true; });
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            let h = window.innerHeight - e.clientY;
+            if (h > 40 && h < window.innerHeight * 0.8) term.style.height = h + 'px';
+        });
+        document.addEventListener('mouseup', () => { isResizing = false; editor.resize(); });
+    }
+
+    async function sync() {
+        if (isSyncing) return;
+        isSyncing = true;
+        const formData = new FormData();
+        formData.append('content', editor.getValue());
+        formData.append('version', currentVersion);
+        formData.append('project_id', projectId);
+
+        try {
+            const res = await fetch('/sync/', { 
+                method: 'POST', 
+                body: formData,
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
+            });
+            if (res.status === 409) {
+                const data = await res.json();
+                const pos = editor.getCursorPosition();
+                editor.setValue(data.content, -1);
+                editor.moveCursorToPosition(pos);
+                currentVersion = data.current_version;
+            } else if (res.ok) {
+                const data = await res.json();
+                currentVersion = data.new_version;
+            }
+        } catch (e) {} finally { isSyncing = false; }
+    }
+    setInterval(sync, 3000);
+
+    function openModal(id) {
+        console.log("Пытаюсь открыть окно: " + id + "Modal");
+        const modal = document.getElementById(id + 'Modal');
+        if (modal) {
+            modal.style.display = 'block';
+        } else {
+            alert("Ошибка: Окно с id='" + id + "Modal' не найдено в HTML!");
+        }
+    }
+
+    function closeModal(id) {
+        const modal = document.getElementById(id + 'Modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    function submitLogin() {
+        const user = document.getElementById('loginUsername').value;
+        const pass = document.getElementById('loginPassword').value;
+
+        fetch('/login/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({username: user, password: pass})
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); 
+            } else {
+                alert(data.message || 'Ошибка входа');
+            }
+        })
+        .catch(err => alert("Ошибка запроса: " + err));
+    }
+
+    function submitLogin() {
+    const user = document.getElementById('loginUsername').value;
+    const pass = document.getElementById('loginPassword').value;
+
+    if (!user || !pass) {
+        alert("Пожалуйста, заполните все поля");
+        return;
+    }
+
+    fetch('/login/', { // Путь должен совпадать с urls.py
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}' // Обязательно для Django
+        },
+        body: JSON.stringify({
+            username: user,
+            password: pass
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Если вход успешен, перезагружаем страницу, чтобы хедер обновился
+            location.reload(); 
+        } else {
+            alert(data.message || 'Неверный логин или пароль');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Произошла ошибка при попытке входа');
+    });
+}
+</script>
+</body>
+</html>
