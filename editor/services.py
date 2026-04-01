@@ -9,8 +9,11 @@ from groq import Groq
 
 load_dotenv()
 
-# Базовый URL для Judge0
-JUDGE0_URL = "https://ce.judge0.com/submissions"
+
+# Используем Judge0 для выполнения кода
+JUDGE0_URL = "https://ce.judge0.com/submissions?wait=true"
+
+
 
 class BaseAIService(ABC):
     @abstractmethod
@@ -25,13 +28,20 @@ class BaseRunnerService(ABC):
 class AIService(BaseAIService):
     def __init__(self):
         self.api_key = os.getenv("GROQ_API_KEY")
+
+        # Инициализируем клиент только если есть ключ
+
+        # Согласно тестам, модель llama-3.1-8b-instant работает стабильно
+
         self.client = Groq(api_key=self.api_key) if self.api_key else None
         self.model_id = "llama-3.1-8b-instant" 
 
     def _get_ai_response(self, system_prompt: str, user_prompt: str, force_json: bool = False):
         if not self.client:
-            return {"error": "GROQ_API_KEY отсутствует в .env файле"}
-        
+
+            return {"error": "GROQ_API_KEY missing в .env файле"}
+
+
         try:
             completion = self.client.chat.completions.create(
                 model=self.model_id,
@@ -39,7 +49,11 @@ class AIService(BaseAIService):
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
                 ],
+
+                # Если нужен JSON, Groq требует упоминания слова 'json' в системном промте
+
                 temperature=0.1,
+
                 response_format={"type": "json_object"} if force_json else None
             )
             text = completion.choices[0].message.content.strip()

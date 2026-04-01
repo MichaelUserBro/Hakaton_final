@@ -5,13 +5,16 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout
+from django.contrib.auth import authenticate, login
 from django.contrib import messages
 
 from .models import Document, UserProfile, Project
 from .forms import UserRegisterForm
 from .services import PistonCodeRunner, AIService
 
-# Инициализируем сервисы один раз при запуске
+
+
+# Инициализируем сервисы
 ai_service = AIService()
 runner_service = PistonCodeRunner()
 
@@ -38,7 +41,7 @@ def index(request):
                     content=""
                 )
     else:
-        # Для неавторизованных берем временный документ
+        # Для неавторизованных создаем/берем временный документ
         doc, _ = Document.objects.get_or_create(id=1, defaults={'name': 'temp.py', 'content': ''})
 
     return render(request, 'editor/index.html', {
@@ -94,7 +97,9 @@ def run_code(request):
 
 @csrf_exempt
 def ai_action(request):
-    """Универсальный метод для всех AI функций Groq."""
+    """
+    Универсальный метод для всех AI функций с расширенным дебагом.
+    """
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -102,6 +107,19 @@ def ai_action(request):
             action = data.get('action', '')
             error_log = data.get('error_log', '')
 
+            # --- ШАГ ПРОВЕРКИ (Смотри в терминал после нажатия кнопки) ---
+            print("\n" + "="*50)
+            print(f"AI ACTION DEBUG:")
+            print(f"Действие: {action}")
+            print(f"Длина лога ошибки: {len(error_log) if error_log else 0}")
+            print(f"Содержимое лога: {error_log}")
+            print("="*50 + "\n")
+            # ------------------------------------------------------------
+
+            if not code.strip():
+                return JsonResponse({'error': 'Код пуст'}, status=400)
+
+            # Вызываем AIService
             if not code.strip():
                 return JsonResponse({'error': 'Код пуст'}, status=400)
 
@@ -109,6 +127,7 @@ def ai_action(request):
             return JsonResponse(result)
             
         except Exception as e:
+            print(f"CRITICAL ERROR IN VIEW: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)
             
     return JsonResponse({'error': 'POST required'}, status=405)
@@ -155,3 +174,31 @@ def join_project(request, token):
         project.members.add(request.user)
         return redirect('index')
     return redirect('register')
+
+
+
+# Убираем @csrf_exempt, если в JS передается X-CSRFToken
+
+def login_view(request):
+    if request.method == 'POST':
+        if not request.body:
+            return JsonResponse({'success': False, 'message': 'Пустой запрос'}, status=400)
+        try:
+            data = json.loads(request.body)
+            username = data.get('username')
+            password = data.get('password')
+            
+            user = authenticate(request, username=username, password=password)
+            
+            if user is not None:
+                login(request, user)
+                return JsonResponse({'success': True, 'message': 'Добро пожаловать!'})
+            else:
+                return JsonResponse({
+                    'success': False, 
+                    'message': 'Неверный логин или пароль'
+                }, status=401)
+        except json.JSONDecodeError:
+            return JsonResponse({'success': False, 'message': 'Ошибка данных'}, status=400)
+            
+    return JsonResponse({'success': False, 'message': 'Метод не разрешен'}, status=405)

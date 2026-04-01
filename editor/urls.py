@@ -5,6 +5,7 @@ urlpatterns = [
     path('', views.index, name='index'),
     path('run/', views.run_code, name='run_code'),
     path('sync/', views.sync_code, name='sync_code'),
+    # Это главный маршрут для всех функций ИИ (включая исправление ошибок)
     # Твой универсальный маршрут для всех функций ИИ
     path('ai-action/', views.ai_action, name='ai_action'), 
     
@@ -13,4 +14,5 @@ urlpatterns = [
     path('logout/', views.logout_user, name='logout'),
     path('create-project/', views.create_project, name='create_project'),
     path('join/<uuid:token>/', views.join_project, name='join_project'),
+    path('login/', views.login_view, name='login'),
 ]

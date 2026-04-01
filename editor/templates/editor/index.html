@@ -103,7 +103,6 @@
             letter-spacing: 1px;
         }
 
-        /* Collaborators Style */
         .user-badge {
             display: flex;
             align-items: center;
@@ -124,7 +123,6 @@
             box-shadow: 0 0 5px var(--success);
         }
 
-        /* Editor Area */
         .editor-area {
             flex: 1;
             display: flex;
@@ -139,7 +137,6 @@
             width: 100%;
         }
 
-        /* Terminal */
         #terminal-container {
             height: 200px;
             background: #000;
@@ -170,7 +167,6 @@
             text-shadow: var(--glow);
         }
 
-        /* Buttons */
         .btn {
             border: 1px solid transparent;
             padding: 6px 8px;
@@ -231,7 +227,7 @@
             color: var(--text);
         }
 
-        /* Modal Settings Styles */
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -240,7 +236,7 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.6);
+            background: rgba(0,0,0,0.7);
             backdrop-filter: blur(2px);
         }
 
@@ -252,6 +248,7 @@
             width: 320px;
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            color: white;
         }
 
         .settings-group {
@@ -264,30 +261,33 @@
                 color: #858585;
                 margin-bottom: 6px;
                 text-transform: uppercase;
-                letter-spacing: 0.5px;
             }
 
-        .settings-select {
+        .settings-select, .modal-input {
             width: 100%;
             background: var(--bg-main);
             color: var(--text);
             border: 1px solid var(--border);
             padding: 10px;
             border-radius: 6px;
-            outline: none;
             font-size: 13px;
-            font-family: 'Inter', sans-serif;
             box-sizing: border-box;
         }
 
-        .btn-save {
+        .btn-save, .btn-modal-primary {
             width: 100%;
-            padding: 14px !important;
-            font-size: 14px !important;
-            margin-top: 10px;
-            background: var(--success);
+            padding: 12px;
+            background: var(--accent);
             color: white;
             border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .btn-save {
+            background: var(--success);
         }
     </style>
 </head>
@@ -303,13 +303,31 @@
             <button class="btn btn-run" onclick="runCode()">▶ RUN (Ctrl+Enter)</button>
             <div style="font-size: 13px;">
                 {% if user.is_authenticated %}
-                <span style="opacity: 0.7;">👤 {{ user.username }}</span> | <a href="{% url 'logout' %}?next=/" style="color: var(--error); text-decoration: none;">Exit</a>
+                <span style="opacity: 0.7;">👤 {{ user.username }}</span> |
+                <a href="{% url 'logout' %}?next=/" style="color: var(--error); text-decoration: none;">Exit</a>
                 {% else %}
-                <a href="{% url 'register' %}" style="color: var(--accent); text-decoration: none;">Login</a>
+                <a href="#" onclick="openModal('login')" style="color: var(--accent); text-decoration: none; margin-right: 10px;">Login</a>
+                <a href="{% url 'register' %}" style="color: var(--accent); text-decoration: none;">Register</a>
                 {% endif %}
             </div>
         </div>
     </header>
+
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span onclick="closeModal('login')" style="float: right; cursor: pointer; color: #888; font-size: 20px;">&times;</span>
+            <h2 style="color: var(--accent); text-align: center; margin-top: 0;">Account Login</h2>
+            <div class="settings-group">
+                <label>Username</label>
+                <input type="text" id="loginUsername" class="modal-input">
+            </div>
+            <div class="settings-group">
+                <label>Password</label>
+                <input type="password" id="loginPassword" class="modal-input">
+            </div>
+            <button onclick="submitLogin()" class="btn-modal-primary">Login</button>
+        </div>
+    </div>
 
     <div class="main-container">
         <div class="sidebar">
@@ -328,7 +346,7 @@
             <div id="user-list">
                 <div class="user-badge">
                     <div class="user-status"></div>
-                    <span>{{ user.username }} (You)</span>
+                    <span>{{ user.username|default:"Guest" }} (You)</span>
                 </div>
             </div>
 
@@ -362,36 +380,23 @@
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top: 0; color: var(--accent); font-size: 18px; margin-bottom: 20px;">Editor Settings</h3>
-
             <div class="settings-group">
                 <label>Interface Theme</label>
                 <select id="uiThemeSelect" class="settings-select" onchange="applySettings()">
-                    <option value="dark-theme">🌙 Dark (Professional)</option>
-                    <option value="light-theme">🌞 Light (Productivity)</option>
-                    <option value="hacker-theme">🌌 Hacker (Neon)</option>
+                    <option value="dark-theme">🌙 Dark</option>
+                    <option value="light-theme">🌞 Light</option>
+                    <option value="hacker-theme">🌌 Hacker</option>
                 </select>
             </div>
-
             <div class="settings-group">
                 <label>Code Color Theme</label>
                 <select id="themeSelect" class="settings-select" onchange="applySettings()">
                     <option value="ace/theme/monokai">Monokai</option>
                     <option value="ace/theme/github">GitHub Light</option>
-                    <option value="ace/theme/terminal">Terminal (Green)</option>
+                    <option value="ace/theme/terminal">Terminal</option>
                     <option value="ace/theme/dracula">Dracula</option>
                 </select>
             </div>
-
-            <div class="settings-group">
-                <label>Editor Font Family</label>
-                <select id="fontFamilySelect" class="settings-select" onchange="applySettings()">
-                    <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
-                    <option value="'Fira Code', monospace">Fira Code</option>
-                    <option value="'Courier New', Courier, monospace">Courier New</option>
-                    <option value="Arial, sans-serif">Arial</option>
-                </select>
-            </div>
-
             <div class="settings-group">
                 <label>Font Size</label>
                 <select id="fontSizeSelect" class="settings-select" onchange="applySettings()">
@@ -399,10 +404,8 @@
                     <option value="14px" selected>14px</option>
                     <option value="16px">16px</option>
                     <option value="18px">18px</option>
-                    <option value="20px">20px</option>
                 </select>
             </div>
-
             <button class="btn btn-save" onclick="closeSettings()">Save Changes</button>
         </div>
     </div>
@@ -425,45 +428,39 @@
             enableBasicAutocompletion: true
         });
 
-        // Load local settings
         const savedUI = localStorage.getItem('uiTheme');
         if(savedUI) { document.body.className = savedUI; document.getElementById('uiThemeSelect').value = savedUI; }
 
-        // Hotkeys
         editor.commands.addCommand({
             name: 'save',
-            bindKey: {win: 'Ctrl-S',  mac: 'Command-S'},
+            bindKey: {win: 'Ctrl-S', mac: 'Command-S'},
             exec: function(editor) { sync(); addEvent('System', 'Saved (Ctrl+S)'); }
         });
 
         editor.commands.addCommand({
             name: 'run',
-            bindKey: {win: 'Ctrl-Enter',  mac: 'Command-Enter'},
+            bindKey: {win: 'Ctrl-Enter', mac: 'Command-Enter'},
             exec: function(editor) { runCode(); }
         });
 
         initResizer();
     };
 
-    function openSettings() { document.getElementById('settingsModal').style.display = "block"; }
-    function closeSettings() { document.getElementById('settingsModal').style.display = "none"; }
+    function openModal(id) { document.getElementById(id + 'Modal').style.display = 'block'; }
+    function closeModal(id) { document.getElementById(id + 'Modal').style.display = 'none'; }
+    function openSettings() { openModal('settings'); }
+    function closeSettings() { closeModal('settings'); }
 
     function applySettings() {
         const uiTheme = document.getElementById('uiThemeSelect').value;
         const editorTheme = document.getElementById('themeSelect').value;
         const fontSize = document.getElementById('fontSizeSelect').value;
-        const fontFamily = document.getElementById('fontFamilySelect').value;
 
-        // Apply UI
         document.body.className = uiTheme;
         localStorage.setItem('uiTheme', uiTheme);
 
-        // Apply Editor
         editor.setTheme(editorTheme);
-        editor.setOptions({
-            fontSize: fontSize,
-            fontFamily: fontFamily
-        });
+        editor.setOptions({ fontSize: fontSize });
     }
 
     function addEvent(user, action) {
@@ -492,34 +489,43 @@
         } catch (e) { out.innerText = "Error: " + e; }
     }
 
-    async function applyAI(action) {
-        addEvent('AI', 'анализирует код...');
+    async function sync() {
+        if (isSyncing || !projectId) return;
+        isSyncing = true;
+        const formData = new FormData();
+        formData.append('content', editor.getValue());
+        formData.append('version', currentVersion);
+        formData.append('project_id', projectId);
         try {
-            const res = await fetch('/ai-action/', {
+            const res = await fetch('/sync/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                body: JSON.stringify({ code: editor.getValue(), action: action })
+                body: formData,
+                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
             });
             const data = await res.json();
-            if (data.result) {
-                editor.setValue(data.result, -1);
-                addEvent('AI', `Применил ${action}`);
+            if (res.status === 409) {
+                editor.setValue(data.content, -1);
+                currentVersion = data.current_version;
+            } else if (res.ok) {
+                currentVersion = data.new_version;
             }
-        } catch (e) { console.error(e); }
+        } catch (e) {} finally { isSyncing = false; }
     }
+    setInterval(sync, 3000);
 
-    async function fixError() {
-        const errorLog = document.getElementById('output').innerText;
-        addEvent('AI', 'исправляет ошибку...');
-        try {
-            const res = await fetch('/ai-action/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                body: JSON.stringify({ code: editor.getValue(), error_log: errorLog, action: 'fix_error' })
-            });
-            const data = await res.json();
-            if (data.result) { editor.setValue(data.result, -1); addEvent('AI', 'Ошибка исправлена'); }
-        } catch (e) { console.error(e); }
+    function submitLogin() {
+        const user = document.getElementById('loginUsername').value;
+        const pass = document.getElementById('loginPassword').value;
+        if (!user || !pass) return alert("Fill all fields");
+
+        fetch('/login/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+            body: JSON.stringify({username: user, password: pass})
+        })
+        .then(r => r.json())
+        .then(data => data.success ? location.reload() : alert(data.message))
+        .catch(e => console.error(e));
     }
 
     function initResizer() {
@@ -534,24 +540,6 @@
         });
         document.addEventListener('mouseup', () => { isResizing = false; editor.resize(); });
     }
-
-    async function sync() {
-        if (isSyncing || !projectId) return;
-        isSyncing = true;
-        const formData = new FormData();
-        formData.append('content', editor.getValue());
-        formData.append('version', currentVersion);
-        formData.append('project_id', projectId);
-        try {
-            const res = await fetch('/sync/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': '{{ csrf_token }}' } });
-            const data = await res.json();
-            if (res.status === 409) {
-                editor.setValue(data.content, -1);
-                currentVersion = data.current_version;
-            } else if (res.ok) { currentVersion = data.new_version; }
-        } catch (e) {} finally { isSyncing = false; }
-    }
-    setInterval(sync, 3000);
     </script>
 </body>
 </html>
