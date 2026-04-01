@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>AI IDE 2.0 | Collaborative Edition</title>
@@ -137,8 +137,6 @@
         #editor {
             flex: 1;
             width: 100%;
-            font-size: 14px;
-            font-family: 'JetBrains Mono', monospace;
         }
 
         /* Terminal */
@@ -233,7 +231,7 @@
             color: var(--text);
         }
 
-        /* Modal */
+        /* Modal Settings Styles */
         .modal {
             display: none;
             position: fixed;
@@ -257,26 +255,40 @@
         }
 
         .settings-group {
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
             .settings-group label {
                 display: block;
-                font-size: 11px;
+                font-size: 10px;
                 color: #858585;
-                margin-bottom: 8px;
+                margin-bottom: 6px;
                 text-transform: uppercase;
+                letter-spacing: 0.5px;
             }
 
-            .settings-group select {
-                width: 100%;
-                background: var(--bg-main);
-                color: var(--text);
-                border: 1px solid var(--border);
-                padding: 10px;
-                border-radius: 6px;
-                outline: none;
-            }
+        .settings-select {
+            width: 100%;
+            background: var(--bg-main);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 6px;
+            outline: none;
+            font-size: 13px;
+            font-family: 'Inter', sans-serif;
+            box-sizing: border-box;
+        }
+
+        .btn-save {
+            width: 100%;
+            padding: 14px !important;
+            font-size: 14px !important;
+            margin-top: 10px;
+            background: var(--success);
+            color: white;
+            border: none;
+        }
     </style>
 </head>
 <body class="dark-theme">
@@ -291,9 +303,9 @@
             <button class="btn btn-run" onclick="runCode()">▶ RUN (Ctrl+Enter)</button>
             <div style="font-size: 13px;">
                 {% if user.is_authenticated %}
-                <span style="opacity: 0.7;">👤 {{ user.username }}</span> | <a href="{% url 'logout' %}?next=/" style="color: var(--error); text-decoration: none;">Выйти</a>
+                <span style="opacity: 0.7;">👤 {{ user.username }}</span> | <a href="{% url 'logout' %}?next=/" style="color: var(--error); text-decoration: none;">Exit</a>
                 {% else %}
-                <a href="{% url 'register' %}" style="color: var(--accent); text-decoration: none;">Войти</a>
+                <a href="{% url 'register' %}" style="color: var(--accent); text-decoration: none;">Login</a>
                 {% endif %}
             </div>
         </div>
@@ -324,10 +336,10 @@
             <button class="btn btn-ai" onclick="openSettings()">⚙️ Settings</button>
 
             <h3>AI Refactoring</h3>
-            <button class="btn btn-ai" onclick="applyAI('hints')">📝 Советы (Ctrl+I)</button>
+            <button class="btn btn-ai" onclick="applyAI('hints')">📝 Hints (Ctrl+I)</button>
             <button class="btn btn-ai" onclick="applyAI('rename')">🏷 Renaming</button>
             <button class="btn btn-ai" onclick="applyAI('readable')">📖 Readability</button>
-            <button class="btn btn-fix" onclick="fixError()">🐞 Исправить ошибку</button>
+            <button class="btn btn-fix" onclick="fixError()">🐞 Fix Error</button>
 
             <div id="log" style="margin-top: 15px; font-size: 10px; color: #666; text-align: center;">Ready.</div>
         </div>
@@ -349,34 +361,49 @@
 
     <div id="settingsModal" class="modal">
         <div class="modal-content">
-            <h3 style="margin-top: 0; color: var(--accent); font-size: 18px;">Settings</h3>
+            <h3 style="margin-top: 0; color: var(--accent); font-size: 18px; margin-bottom: 20px;">Editor Settings</h3>
+
             <div class="settings-group">
                 <label>Interface Theme</label>
-                <select id="uiThemeSelect" onchange="applySettings()">
+                <select id="uiThemeSelect" class="settings-select" onchange="applySettings()">
                     <option value="dark-theme">🌙 Dark (Professional)</option>
                     <option value="light-theme">🌞 Light (Productivity)</option>
                     <option value="hacker-theme">🌌 Hacker (Neon)</option>
                 </select>
             </div>
+
             <div class="settings-group">
-                <label>Editor Theme</label>
-                <select id="themeSelect" onchange="applySettings()">
+                <label>Code Color Theme</label>
+                <select id="themeSelect" class="settings-select" onchange="applySettings()">
                     <option value="ace/theme/monokai">Monokai</option>
                     <option value="ace/theme/github">GitHub Light</option>
                     <option value="ace/theme/terminal">Terminal (Green)</option>
                     <option value="ace/theme/dracula">Dracula</option>
                 </select>
             </div>
+
+            <div class="settings-group">
+                <label>Editor Font Family</label>
+                <select id="fontFamilySelect" class="settings-select" onchange="applySettings()">
+                    <option value="'JetBrains Mono', monospace">JetBrains Mono</option>
+                    <option value="'Fira Code', monospace">Fira Code</option>
+                    <option value="'Courier New', Courier, monospace">Courier New</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                </select>
+            </div>
+
             <div class="settings-group">
                 <label>Font Size</label>
-                <select id="sizeSelect" onchange="applySettings()">
+                <select id="fontSizeSelect" class="settings-select" onchange="applySettings()">
                     <option value="12px">12px</option>
                     <option value="14px" selected>14px</option>
                     <option value="16px">16px</option>
                     <option value="18px">18px</option>
+                    <option value="20px">20px</option>
                 </select>
             </div>
-            <button class="btn btn-run" style="width: 100%; padding: 12px;" onclick="closeSettings()">Save Changes</button>
+
+            <button class="btn btn-save" onclick="closeSettings()">Save Changes</button>
         </div>
     </div>
 
@@ -394,34 +421,25 @@
         editor.setShowPrintMargin(false);
         editor.setOptions({
             fontFamily: "JetBrains Mono",
+            fontSize: "14px",
             enableBasicAutocompletion: true
         });
 
-        // --- ГОРЯЧИЕ КЛАВИШИ ---
+        // Load local settings
+        const savedUI = localStorage.getItem('uiTheme');
+        if(savedUI) { document.body.className = savedUI; document.getElementById('uiThemeSelect').value = savedUI; }
+
+        // Hotkeys
         editor.commands.addCommand({
             name: 'save',
             bindKey: {win: 'Ctrl-S',  mac: 'Command-S'},
-            exec: function(editor) {
-                sync();
-                addEvent('System', 'Saved (Ctrl+S)');
-            },
-            readOnly: false
+            exec: function(editor) { sync(); addEvent('System', 'Saved (Ctrl+S)'); }
         });
 
         editor.commands.addCommand({
             name: 'run',
             bindKey: {win: 'Ctrl-Enter',  mac: 'Command-Enter'},
-            exec: function(editor) {
-                runCode();
-            }
-        });
-
-        editor.commands.addCommand({
-            name: 'ai_hints',
-            bindKey: {win: 'Ctrl-I',  mac: 'Command-I'},
-            exec: function(editor) {
-                applyAI('hints');
-            }
+            exec: function(editor) { runCode(); }
         });
 
         initResizer();
@@ -432,9 +450,20 @@
 
     function applySettings() {
         const uiTheme = document.getElementById('uiThemeSelect').value;
+        const editorTheme = document.getElementById('themeSelect').value;
+        const fontSize = document.getElementById('fontSizeSelect').value;
+        const fontFamily = document.getElementById('fontFamilySelect').value;
+
+        // Apply UI
         document.body.className = uiTheme;
-        editor.setTheme(document.getElementById('themeSelect').value);
-        editor.setOptions({ fontSize: document.getElementById('sizeSelect').value });
+        localStorage.setItem('uiTheme', uiTheme);
+
+        // Apply Editor
+        editor.setTheme(editorTheme);
+        editor.setOptions({
+            fontSize: fontSize,
+            fontFamily: fontFamily
+        });
     }
 
     function addEvent(user, action) {
