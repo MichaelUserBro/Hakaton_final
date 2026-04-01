@@ -2,435 +2,253 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>AI IDE 2.0 | Hackathon Edition</title>
+    <title>AI IDE 2.0 | Collaborative Edition</title>
     <style>
-        body {
-            background: #1e1e1e;
-            color: #e0e0e0;
-            font-family: 'Segoe UI', sans-serif;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
+        :root {
+            --bg-main: #1e1e1e;
+            --bg-sidebar: #252526;
+            --border: #333;
+            --accent: #007acc;
+            --text: #e0e0e0;
         }
 
-        header {
-            background: #252526;
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #333;
-        }
+        body { background: var(--bg-main); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        header { background: var(--bg-sidebar); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); z-index: 100; height: 50px; box-sizing: border-box; }
+        
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        
+        /* Левая панель (Твоя база) */
+        .sidebar { width: 250px; background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+        
+        .editor-area { flex: 1; display: flex; flex-direction: column; background: #1e1e1e; position: relative; min-width: 0; }
+        
+        /* Правая панель (Лента от фронта) */
+        .event-timeline { width: 240px; background: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+        .timeline-header { padding: 15px; font-size: 11px; text-transform: uppercase; color: #858585; border-bottom: 1px solid var(--border); letter-spacing: 1px; }
+        #timeline-content { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .event-card { background: #2d2d2d; border-radius: 4px; padding: 8px 12px; font-size: 12px; border-left: 3px solid var(--accent); animation: fadeIn 0.3s ease-out; }
 
-        .main-container {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
-        .sidebar {
-            width: 250px;
-            background: #252526;
-            border-right: 1px solid #333;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sidebar h3 {
-            font-size: 11px;
-            text-transform: uppercase;
-            color: #858585;
-            letter-spacing: 1px;
-            margin-bottom: 15px;
-            margin-top: 20px;
-        }
-
-        .user-item {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-            font-size: 13px;
-        }
-
-        .user-status {
-            width: 8px;
-            height: 8px;
-            background: #4ec9b0;
-            border-radius: 50%;
-            margin-right: 10px;
-        }
-
-        .editor-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        #editor {
-            flex: 1;
-            font-size: 14px;
-        }
-
-        #ai-panel {
-            background: #1a2a3a;
-            border-left: 4px solid #007acc;
-            padding: 12px;
-            font-size: 13px;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        #ai-panel.analyzing {
-            border-left-color: #4ec9b0;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { background: #1a2a3a; }
-            50% { background: #263e55; }
-            100% { background: #1a2a3a; }
-        }
-
-        .ai-header {
-            font-weight: bold;
-            color: #4fc1ff;
-            margin-right: 10px;
-        }
-
-        #ai-hints {
-            color: #dcdcdc;
-            font-style: italic;
-            flex: 1;
-        }
-
-        .terminal {
-            height: 160px;
-            background: #000;
-            border-top: 1px solid #333;
-            padding: 10px;
-            font-family: 'Consolas', monospace;
-            color: #00ff00;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-
-        #notifications {
-            position: fixed;
-            top: 60px;
-            right: 20px;
-            z-index: 1000;
-        }
-
-        .toast {
-            background: #333;
-            color: white;
-            padding: 10px 20px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            border-left: 4px solid #007acc;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-            animation: slideIn 0.3s ease-out;
-            font-size: 13px;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
-        }
-
-        .btn {
-            border: none;
-            padding: 8px 16px;
-            cursor: pointer;
-            border-radius: 4px;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-
-        .btn-run {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-run:hover { background: #218838; }
-
-        .btn-ai {
-            background: #007acc;
-            color: white;
-            margin-top: 10px;
-            width: 100%;
-            font-size: 12px;
-        }
+        #editor { flex: 1; width: 100%; font-size: 14px; }
+        
+        /* Терминал */
+        #terminal-container { height: 200px; min-height: 40px; background: #000; display: flex; flex-direction: column; position: relative; border-top: 1px solid var(--border); }
+        #terminal-resizer { height: 6px; background: #333; cursor: ns-resize; width: 100%; transition: background 0.2s; }
+        #terminal-resizer:hover { background: var(--accent); }
+        .terminal-header { background: #1e1e1e; padding: 5px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+        .terminal-title { font-size: 11px; color: #858585; text-transform: uppercase; }
+        .terminal-content { flex: 1; padding: 10px; font-family: 'Consolas', monospace; color: #00ff00; overflow-y: auto; white-space: pre-wrap; font-size: 13px; }
+        
+        /* Кнопки */
+        .btn { border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; font-size: 12px; text-decoration: none; text-align: center; }
+        .btn-run { background: #28a745; color: white; }
+        .btn-ai { background: #3e3e42; color: #ccc; margin-top: 5px; width: 100%; text-align: left; border: 1px solid #454545; }
+        .btn-ai:hover { background: var(--accent); color: white; border-color: var(--accent); }
+        .btn-fix { background: #d9534f; color: white; margin-top: 15px; width: 100%; }
+        .btn-fix:hover { background: #c9302c; }
+        
+        .project-link { display: block; color: #ccc; text-decoration: none; font-size: 13px; padding: 5px 8px; border-radius: 3px; margin-bottom: 2px; }
+        .project-link.active { background: #37373d; color: var(--accent); border-left: 2px solid var(--accent); }
     </style>
 </head>
 <body>
 
-    <div id="notifications"></div>
-
-<header style="display: flex; justify-content: space-between; align-items: center; padding: 10px 20px;">
-    <div style="font-size: 16px;">
-        🚀 HACKATHON_PROJECT <span style="color: #6a9955;">— main.py</span>
-    </div>
-    
+<header>
+    <div style="font-size: 16px;">🚀 AI_IDE_PRO <span style="color: #6a9955;">— {{ doc.name|default:"main.py" }}</span></div>
     <div style="display: flex; align-items: center; gap: 15px;">
-        <button class="btn-run" onclick="runCode()">▶ Run Code</button>
-        
+        <button class="btn btn-run" onclick="runCode()">▶ Run Code</button>
         <div class="user-control">
             {% if user.is_authenticated %}
-                <a href="{% url 'profile' %}" class="btn-profile">
-                    👤 {{ user.username }}
-                </a>
-                <a href="{% url 'logout' %}?next=/" style="color: #f44336; text-decoration: none;">Выйти</a>
+                <span style="font-size: 13px;">👤 {{ user.username }}</span>
+                <a href="{% url 'logout' %}?next=/" style="color: #f44336; text-decoration: none; font-size: 13px; margin-left: 10px;">Выйти</a>
             {% else %}
-                <a href="{% url 'register' %}" class="btn-profile">Войти / Регистрация</a>
+                <a href="{% url 'register' %}" style="color: #569cd6; text-decoration: none; font-size: 13px;">Войти / Регистрация</a>
             {% endif %}
         </div>
     </div>
 </header>
 
 <div class="main-container">
-    
     <div class="sidebar">
-        <div style="padding: 10px; border-bottom: 1px solid #3c3c3c; margin-bottom: 10px;">
-            <h3 style="margin: 0; font-size: 14px; color: #6a9955;">
-                📁 Комната: {{ current_project.name|default:"Локальная сессия" }}
-            </h3>
-            <div style="margin-bottom: 10px;">
-                <a href="{% url 'create_project' %}" style="color: #569cd6; font-size: 11px; text-decoration: none; border: 1px solid #333; padding: 4px 8px; border-radius: 4px;">
-                    + Создать новую комнату
+        <h3 style="margin: 0 0 10px 0; font-size: 12px; color: #858585; text-transform: uppercase;">📁 ПРОЕКТЫ</h3>
+        <a href="{% url 'create_project' %}" class="btn" style="background: #444; color: #fff; margin-bottom: 15px; border: 1px dashed #666;">+ Создать комнату</a>
+
+        <div style="margin-bottom: 20px;">
+            {% for project in user.projects.all %}
+                <a href="/?project_id={{ project.id }}" class="project-link {% if project.id == current_project.id %}active{% endif %}">
+                    {{ project.name }}
                 </a>
-            </div>
-
-            <div style="margin-top: 15px;">
-                <p style="font-size: 10px; color: #888; margin-bottom: 5px;">МОИ КОМНАТЫ:</p>
-                {% for project in user.projects.all %}
-                    <div style="margin-bottom: 4px;">
-                        <a href="?project_id={{ project.id }}" 
-                        style="font-size: 12px; text-decoration: none; color: {% if project.id == current_project.id %}#6a9955{% else %}#ccc{% endif %};">
-                        {% if project.id == current_project.id %}▶{% else %}📁{% endif %} {{ project.name }}
-                        </a>
-                    </div>
-                {% endfor %}
-            </div>
-
-        <div id="members-section">
-            <p style="font-size: 11px; color: #888; margin-left: 10px;">УЧАСТНИКИ:</p>
-            {% if current_project %}
-                {% for member in current_project.members.all %}
-                    <div class="user-item">
-                        <div class="user-status" style="background: {% if member.is_authenticated %}#6a9955{% else %}#888{% endif %};"></div>
-                        {{ member.username }} {% if member == user %}(Вы){% endif %}
-                    </div>
-                {% endfor %}
-            {% else %}
-                <div class="user-item">
-                    <div class="user-status" style="background: #6a9955;"></div> 
-                    {{ user.username|default:"Student" }} (You)
-                </div>
-            {% endif %}
+            {% endfor %}
         </div>
 
-        <h3 style="margin-top: 20px;">AI Tools</h3>
-        <button class="btn btn-ai" onclick="resolveLineConflict()">✨ Fix Current Line</button>
-
-        <div id="log" style="margin-top: auto; font-size: 11px; color: #666; padding: 10px;">
-            Ready.
+        <h3 style="margin-top: 10px; font-size: 12px; color: #858585; text-transform: uppercase;">✨ AI REFACTORING</h3>
+        <div style="display: flex; flex-direction: column; gap: 5px;">
+            <button class="btn btn-ai" onclick="applyAI('hints')">📝 Советы по улучшению</button>
+            <button class="btn btn-ai" onclick="applyAI('rename')">🏷 Провести renaming</button>
+            <button class="btn btn-ai" onclick="applyAI('readable')">📖 Улучшить читабельность</button>
+            <button class="btn btn-fix" onclick="fixError()">🐞 Исправить ошибку</button>
         </div>
-    </div> <div class="editor-area">
-        <!-- <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #1e1e1e; border-bottom: 1px solid #333;">
-            <div style="font-size: 16px;">🚀 HACKATHON_PROJECT <span style="color: #6a9955;">— main.py</span></div>
-            <button class="btn btn-run" onclick="runCode()">▶ Run Code</button>
-        </header> --> 
-        <!-- САШИНА КНОПКА ВРОДЕ, Я ЕЕ УБРАЛА НЕ ЗНАЮ КАК ОФОРМИТЬ МОЮ ТАКЖЕ МОЯ НА СТРОКЕ 182-->
 
-        <div id="ai-panel">
-            <div class="ai-header">🤖 AI REVIEW:</div>
-            <div id="ai-hints">Analyzing code patterns...</div>
-        </div>
-        
-        <div id="editor" style="flex-grow: 1;">{{ doc.content }}</div>
-
-        <div class="terminal" id="output">Terminal initialized. Ready for execution...</div>
+        <div id="log" style="margin-top: auto; font-size: 11px; color: #666; padding-top: 20px;">Система готова.</div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
-    <script>
-        var editor; 
-        window.onload = function() {
-            // Этот код сработает только когда весь HTML уже готов
-            editor = ace.edit("editor");
-            editor.setTheme("ace/theme/monokai");
-            editor.session.setMode("ace/mode/python");
-            editor.setShowPrintMargin(false);
-            
-            console.log("Редактор успешно загружен!");
-        };
+    <div class="editor-area">
+        <div id="editor">{{ doc.content }}</div>
 
-        function showToast(message) {
-            const container = document.getElementById('notifications');
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.innerText = message;
-            container.appendChild(toast);
-            setTimeout(() => { 
-                toast.style.opacity = '0'; 
-                setTimeout(() => toast.remove(), 500); 
-            }, 4000);
-        }
+        <div id="terminal-container">
+            <div id="terminal-resizer"></div>
+            <div class="terminal-header">
+                <span class="terminal-title">Console Output</span>
+                <div>
+                    <button class="btn" style="background: #333; color: #ccc;" onclick="document.getElementById('output').innerText = ''">Очистить</button>
+                    <button class="btn" style="background: #333; color: #ccc;" onclick="toggleTerminal()">Свернуть</button>
+                </div>
+            </div>
+            <div class="terminal-content" id="output">Terminal initialized...</div>
+        </div>
+    </div>
 
-        async function sync() {
-            if (isSyncing) return;
-            const content = editor.getValue();
-            isSyncing = true;
+    <div class="event-timeline">
+        <div class="timeline-header">Лента событий</div>
+        <div id="timeline-content">
+            <div class="event-card" style="border-left-color: #6a9955;">
+                <div style="font-size: 10px; color: #666; margin-bottom: 4px;">System</div>
+                <div style="color: #ccc;">Сессия запущена</div>
+            </div>
+        </div>
+    </div>
+</div>
 
-            try {
-                const response = await fetch('/sync/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `content=${encodeURIComponent(content)}&version=${currentVersion}`
-                });
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+<script>
+    var editor;
+    var currentVersion = parseInt("{{ doc.version|default:0 }}");
+    var projectId = "{{ current_project.id|default:'' }}";
+    var isSyncing = false;
+    var lastError = ""; 
 
-                const data = await response.json();
+    window.onload = function() {
+        editor = ace.edit("editor");
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/python");
+        editor.setShowPrintMargin(false);
+        initResizer();
+    };
 
-                if (response.ok) {
-                    currentVersion = data.new_version; // Обновляем версию при успехе
-                } else if (response.status === 409) {
-                    // ВАЖНО: Синхронизируем номер версии с серверным, чтобы остановить конфликт
-                    currentVersion = data.current_version; 
-                    
-                    // Если на сервере код новее — подтягиваем его
-                    if (data.content && data.content !== editor.getValue()) {
-                        editor.setValue(data.content, -1);
-                    }
-                }
-            } catch (e) { console.error(e); }
-            finally { isSyncing = false; }
-            const formData = new FormData();
-            formData.append('content', content);
-            try {
-                const res = await fetch('/sync/', { method: 'POST', body: formData });
-                const data = await res.json();
-                if (data.content && data.content !== editor.getValue()) {
-                    const pos = editor.getCursorPosition();
-                    editor.setValue(data.content, -1);
-                    editor.moveCursorToPosition(pos);
-                    document.getElementById('log').innerText = "Last sync: " + new Date().toLocaleTimeString();
-                }
-            } catch (e) { console.error("Sync error"); }
-        }
+    // Функция добавления события в Timeline (от фронта)
+    function addEvent(user, action) {
+        const container = document.getElementById('timeline-content');
+        const now = new Date();
+        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        const card = document.createElement('div');
+        card.className = 'event-card';
+        if(user === 'AI') card.style.borderLeftColor = '#007acc';
+        card.innerHTML = `<div style="font-size: 10px; color: #666; margin-bottom: 4px;">${timeStr}</div><div style="color: #ccc;"><b>${user}:</b> ${action}</div>`;
+        container.prepend(card);
+    }
 
-        // Исправлено: путь изменен на /ai-review/ для совпадения с urls.py
-        async function getAIReview() {
-            const aiPanel = document.getElementById('ai-panel');
-            const hintsElement = document.getElementById('ai-hints');
-            aiPanel.classList.add('analyzing');
-
-            try {
-                const res = await fetch('/ai-review/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: editor.getValue() })
-                });
-                const data = await res.json();
-                if (data.hints) {
-                    hintsElement.innerText = data.hints.join(' | ');
-                }
-            } catch (e) {
-                console.error("AI Review error");
-            } finally {
-                setTimeout(() => aiPanel.classList.remove('analyzing'), 1500);
-            }
-        }
-
-        // async function runCode() {
-        //     const out = document.getElementById('output');
-        //     // Получаем код из редактора Ace
-        //     const codeToRun = editor.getValue(); 
-            
-        //     out.innerText = ">>> Running code...\n";
-            
-        //     try {
-        //         const res = await fetch('/run/', {
-        //             method: 'POST', // ТУТ ИСПРАВЛЯЕМ GET НА POST
-        //             headers: {
-        //                 'Content-Type': 'application/x-www-form-urlencoded',
-        //             },
-        //             // Передаем код в теле запроса
-        //             body: 'content=' + encodeURIComponent(codeToRun)
-        //         });
-                
-        //         const data = await res.json();
-                
-        //         if (data.output) {
-        //             out.innerText = ">>> Result:\n" + data.output;
-        //         } else {
-        //             out.innerText = ">>> Код выполнен без вывода.";
-        //         }
-        //     } catch (e) { 
-        //         out.innerText = ">>> Ошибка соединения с сервером"; 
-        // Функция для кнопки "Fix Current Line" (Этап 2)
-        async function resolveLineConflict() {
-            const cursor = editor.getCursorPosition();
-            const currentLine = editor.session.getLine(cursor.row);
-            
-            showToast("AI анализирует строку...");
-
-            try {
-                const res = await fetch('/resolve-conflict/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        variant_a: currentLine,
-                        variant_b: "" // В данном контексте передаем одну строку для улучшения
-                    })
-                });
-                const data = await res.json();
-                if (data.best_variant) {
-                    showToast("Решение найдено!");
-                    // Для примера выводим в лог, можно сделать автозамену
-                    console.log("AI рекомендует:", data.best_variant);
-                }
-            } catch (e) {
-                showToast("Ошибка ИИ");
-            }
-        }
-
-        // Запуск кода с разделением потоков (Этап 3)
-        async function runCode() {
-            const out = document.getElementById('output');
-            out.innerText = ">>> Running...\n";
-            out.style.color = "#00ff00";
-
-            try {
-                const res = await fetch('/run/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: editor.getValue() })
-                });
-                const data = await res.json();
-                
-                out.innerText = "";
-                if (data.stderr) {
-                    out.style.color = "#ff5555"; // Ошибки — красным
-                    out.innerText = data.stderr;
+    async function applyAI(action) {
+        const codeToProcess = editor.getSelectedText() || editor.getValue();
+        document.getElementById('log').innerText = "AI анализирует...";
+        
+        try {
+            const res = await fetch('/ai-action/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ code: codeToProcess, action: action })
+            });
+            const data = await res.json();
+            if (data.result) {
+                if (editor.getSelectedText()) {
+                    editor.session.replace(editor.getSelectionRange(), data.result);
                 } else {
-                    out.style.color = "#50fa7b"; // Успех — зеленым
-                    out.innerText = data.stdout || "Success (no output)";
+                    editor.setValue(data.result, -1);
                 }
-            } catch (e) {
-                out.style.color = "#ff5555";
-                out.innerText = "Error: " + e;
+                addEvent('AI', `Применил ${action}`);
+                document.getElementById('log').innerText = "AI: Успешно";
             }
-        }
+        } catch (e) { document.getElementById('log').innerText = "Ошибка соединения"; }
+    }
 
-        setInterval(sync, 5000);
-        setInterval(getAIReview, 15000);
-    </script>
+    async function fixError() {
+        const errorToFix = document.getElementById('output').innerText.trim() || lastError;
+        if (!errorToFix || errorToFix.includes("Terminal initialized")) return alert("Нет ошибки для исправления");
+
+        try {
+            const res = await fetch('/ai-action/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ code: editor.getValue(), error_log: errorToFix, action: 'fix_error' })
+            });
+            const data = await res.json();
+            if (data.explanation && confirm("Причина: " + data.explanation + "\n\nИсправить?")) {
+                editor.setValue(data.result, -1);
+                addEvent('AI', 'Исправил ошибку в коде');
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function runCode() {
+        const out = document.getElementById('output');
+        out.innerText = ">>> Running...\n";
+        addEvent('System', 'Запуск кода');
+        try {
+            const res = await fetch('/run/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ code: editor.getValue() })
+            });
+            const data = await res.json();
+            out.innerText = data.stderr || data.stdout || "--- No output ---";
+            out.style.color = data.stderr ? "#ff5555" : "#50fa7b";
+            lastError = data.stderr || "";
+        } catch (e) { out.innerText = "Error: " + e; }
+    }
+
+    function toggleTerminal() {
+        const term = document.getElementById('terminal-container');
+        term.style.height = (term.style.height === '40px') ? '200px' : '40px';
+        editor.resize();
+    }
+
+    function initResizer() {
+        const resizer = document.getElementById('terminal-resizer');
+        const term = document.getElementById('terminal-container');
+        let isResizing = false;
+        resizer.addEventListener('mousedown', () => { isResizing = true; });
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            let h = window.innerHeight - e.clientY;
+            if (h > 40 && h < window.innerHeight * 0.8) term.style.height = h + 'px';
+        });
+        document.addEventListener('mouseup', () => { isResizing = false; editor.resize(); });
+    }
+
+    async function sync() {
+        if (isSyncing || !projectId) return;
+        isSyncing = true;
+        const formData = new FormData();
+        formData.append('content', editor.getValue());
+        formData.append('version', currentVersion);
+        formData.append('project_id', projectId);
+
+        try {
+            const res = await fetch('/sync/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': '{{ csrf_token }}' } });
+            const data = await res.json();
+            if (res.status === 409) {
+                const pos = editor.getCursorPosition();
+                editor.setValue(data.content, -1);
+                editor.moveCursorToPosition(pos);
+                currentVersion = data.current_version;
+                addEvent('System', 'Синхронизация с сервером');
+            } else if (res.ok) {
+                currentVersion = data.new_version;
+            }
+        } catch (e) {} finally { isSyncing = false; }
+    }
+    setInterval(sync, 3000);
+</script>
 </body>
 </html>

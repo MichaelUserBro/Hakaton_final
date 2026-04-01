@@ -1,25 +1,20 @@
 import os
 import json
 import requests
-import google.generativeai as genai
+import base64
+import time
 from abc import ABC, abstractmethod
 from dotenv import load_dotenv
+from groq import Groq
 
-# Загружаем переменные окружения из .env
 load_dotenv()
 
-# Константа для движка выполнения кода (Judge0)
-JUDGE0_URL = "https://ce.judge0.com/submissions?wait=true"
-
-# --- Абстрактные интерфейсы ---
+# Базовый URL для Judge0
+JUDGE0_URL = "https://ce.judge0.com/submissions"
 
 class BaseAIService(ABC):
     @abstractmethod
-    def analyze_code(self, code: str):
-        pass
-
-    @abstractmethod
-    def resolve_conflict(self, code_variant_a: str, code_variant_b: str):
+    def process_action(self, action: str, code: str, error_log: str = None):
         pass
 
 class BaseRunnerService(ABC):
@@ -27,86 +22,129 @@ class BaseRunnerService(ABC):
     def run(self, code: str):
         pass
 
-# --- Реализация сервисов ---
-
 class AIService(BaseAIService):
     def __init__(self):
-        # Инициализация Gemini
-        api_key = os.getenv("GOOGLE_API_KEY")
-        genai.configure(api_key=api_key)
+        self.api_key = os.getenv("GROQ_API_KEY")
+        self.client = Groq(api_key=self.api_key) if self.api_key else None
+        self.model_id = "llama-3.1-8b-instant" 
+
+    def _get_ai_response(self, system_prompt: str, user_prompt: str, force_json: bool = False):
+        if not self.client:
+            return {"error": "GROQ_API_KEY отсутствует в .env файле"}
         
-        # Используем 1.5-flash-8b: у нее выше лимиты запросов на бесплатном тарифе
-        self.model = genai.GenerativeModel('models/gemini-flash-latest')
-        
-        self.system_instructions = (
-            "Ты — эксперт по Python. Дай 3 очень коротких совета по коду. "
-            "Отвечай СТРОГО в формате JSON: {'hints': ['совет 1', 'совет 2', 'совет 3']}. "
-            "Не пиши пояснений вне JSON. Используй русский язык."
-        )
-
-    def analyze_code(self, code: str):
-        """Отправляет код Gemini для получения советов в формате JSON."""
-        if not os.getenv("GOOGLE_API_KEY"):
-            return ["AI Error: Ключ GOOGLE_API_KEY не найден"]
-
         try:
-            prompt = f"{self.system_instructions}\n\nКод для анализа:\n{code}"
-            response = self.model.generate_content(prompt)
+            completion = self.client.chat.completions.create(
+                model=self.model_id,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"} if force_json else None
+            )
+            text = completion.choices[0].message.content.strip()
             
-            # Очистка текста от markdown-разметки для корректного парсинга JSON
-            raw_text = response.text.strip()
-            clean_json = raw_text.replace('```json', '').replace('```', '').strip()
+            if force_json:
+                return json.loads(text)
             
-            result = json.loads(clean_json)
-            return result.get('hints', ["AI: Советы не сформированы."])
-            
+            if "```" in text:
+                parts = text.split("```")
+                text = parts[1] if len(parts) > 1 else parts[0]
+                if text.lower().startswith("python"):
+                    text = text[6:]
+                text = text.strip()
+                
+            return text
         except Exception as e:
-            # Выводим сокращенную ошибку, чтобы не перегружать интерфейс
-            return [f"AI Error: {str(e)[:100]}"]
+            return {"error": f"Ошибка Groq API: {str(e)}"}
 
-    def resolve_conflict(self, code_variant_a: str, code_variant_b: str):
-        """Просит AI выбрать лучший вариант из двух предложенных."""
-        if not os.getenv("GOOGLE_API_KEY"):
-            return "Ошибка: API ключ не найден."
+    def process_action(self, action: str, code: str, error_log: str = None):
+        if not code.strip():
+            return {"error": "Редактор пуст. Напишите код перед использованием ИИ."}
 
-        prompt = (
-            f"Ты помощник по коду. Есть два варианта:\n"
-            f"А: {code_variant_a}\n"
-            f"Б: {code_variant_b}\n"
-            f"Выбери лучший или объедини. Ответь ТОЛЬКО кодом (без пояснений)."
-        )
+        if action == 'fix_error':
+            is_actually_error = error_log and ("Error" in error_log or "Traceback" in error_log)
+            if not is_actually_error:
+                return {
+                    "explanation": "Последний запуск прошел успешно. Ошибок в коде не обнаружено!",
+                    "result": code
+                }
 
-        try:
-            response = self.model.generate_content(prompt)
-            # Очищаем результат от оберток кода
-            return response.text.strip().replace('```python', '').replace('```', '')
-        except Exception as e:
-            return f"Ошибка кнопки: {str(e)[:50]}"
+            system_msg = (
+                "Ты — эксперт по Python. Твоя задача: ИСПРАВИТЬ ОШИБКУ. "
+                "Используй предоставленный Traceback для точного определения места падения. "
+                "Отвечай СТРОГО в формате JSON с ключами: 'explanation' (на русском) и 'result' (код)."
+            )
+            user_msg = f"ЛОГ ВЫПОЛНЕНИЯ:\n{error_log}\n\nКОД:\n{code}"
+            return self._get_ai_response(system_msg, user_msg, force_json=True)
 
+        prompts = {
+            'hints': (
+                "Ты — эксперт по статическому анализу кода (Code Reviewer). "
+                "Твоя задача: проанализировать код на антипаттерны и ошибки стиля. "
+                "ПРАВИЛА:\n"
+                "1. СТРОГО ЗАПРЕЩЕНО менять исполняемый код.\n"
+                "2. Добавь краткие советы (#) на русском языке ТОЛЬКО в начало файла.\n"
+                "3. Верни оригинальный код без изменений в логике.",
+                f"Проведи аудит. Добавь советы в начало как комментарии, НЕ ТРОГАЙ сам код:\n{code}"
+            ),
+            'rename': (
+                "Ты — эксперт по именованию в Python (PEP8). Твоя задача: переименовать переменные и функции. "
+                "КРИТЕРИИ:\n1. Используй snake_case.\n2. Имена должны быть короткими.\n"
+                "3. Избегай транслита.\n4. СТРОГО ЗАПРЕЩЕНО менять структуру.\n"
+                "5. Верни ТОЛЬКО исправленный код.",
+                f"Оптимизируй названия переменных и функций в этом коде:\n{code}"
+            ),
+            'readable': (
+                "Ты — мастер чистого кода. Сделай код максимально читаемым, сохраняя оригинальную логику. "
+                "Верни ТОЛЬКО код.",
+                f"Сделай этот код понятнее и чище, СТРОГО сохраняя оригинальную логику:\n{code}"
+            )
+        }
+
+        if action in prompts:
+            system_msg, user_msg = prompts[action]
+            res = self._get_ai_response(system_msg, user_msg)
+            if isinstance(res, dict) and "error" in res:
+                return res
+            return {"result": res}
+
+        return {"error": "Действие не распознано"}
 
 class PistonCodeRunner(BaseRunnerService):
     def run(self, code: str):
-        """Отправляет код на выполнение в песочницу Judge0."""
-        payload = {
-            "source_code": code,
-            "language_id": 71,  # Python 3
-            "stdin": ""
-        }
         try:
-            response = requests.post(JUDGE0_URL, json=payload, timeout=10)
+            encoded_code = base64.b64encode(code.encode('utf-8')).decode('utf-8')
+            url = f"{JUDGE0_URL}?wait=true&base64_encoded=true"
+            payload = {
+                "source_code": encoded_code,
+                "language_id": 71,
+                "stdin": ""
+            }
+            response = requests.post(url, json=payload, timeout=15)
             result = response.json()
             
-            stdout = result.get('stdout') or ""
-            stderr = result.get('stderr') or result.get('compile_output') or ""
-            
+            def safe_decode(data):
+                if not data: return ""
+                try:
+                    return base64.b64decode(data).decode('utf-8')
+                except Exception:
+                    return str(data)
+
+            stdout = safe_decode(result.get('stdout'))
+            stderr = safe_decode(result.get('stderr'))
+            compile_output = safe_decode(result.get('compile_output'))
+            message = safe_decode(result.get('message'))
+            status_id = result.get('status', {}).get('id')
+
+            full_error = stderr + compile_output
+            if not stdout and status_id and status_id > 3:
+                full_error = full_error or message or f"Ошибка выполнения (ID: {status_id})"
+
             return {
                 "stdout": stdout,
-                "stderr": stderr,
-                "error": bool(stderr)
+                "stderr": full_error,
+                "error": bool(full_error) or (status_id is not None and status_id > 3)
             }
         except Exception as e:
-            return {
-                "stdout": "",
-                "stderr": f"Ошибка песочницы: {str(e)}",
-                "error": True
-            }
+            return {"stdout": "", "stderr": f"Ошибка в Runner: {str(e)}", "error": True}
