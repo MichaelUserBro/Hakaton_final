@@ -2,39 +2,61 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>AI IDE 2.0 | Hackathon Edition</title>
+    <title>AI IDE 2.0 | Collaborative Edition</title>
     <style>
-        body { background: #1e1e1e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        header { background: #252526; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; z-index: 100; }
+        :root {
+            --bg-main: #1e1e1e;
+            --bg-sidebar: #252526;
+            --border: #333;
+            --accent: #007acc;
+            --text: #e0e0e0;
+        }
+
+        body { background: var(--bg-main); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        header { background: var(--bg-sidebar); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); z-index: 100; height: 50px; box-sizing: border-box; }
+        
         .main-container { display: flex; flex: 1; overflow: hidden; }
-        .sidebar { width: 250px; background: #252526; border-right: 1px solid #333; padding: 15px; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
-        .editor-area { flex: 1; display: flex; flex-direction: column; background: #1e1e1e; position: relative; }
+        
+        /* Левая панель (Твоя база) */
+        .sidebar { width: 250px; background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+        
+        .editor-area { flex: 1; display: flex; flex-direction: column; background: #1e1e1e; position: relative; min-width: 0; }
+        
+        /* Правая панель (Лента от фронта) */
+        .event-timeline { width: 240px; background: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+        .timeline-header { padding: 15px; font-size: 11px; text-transform: uppercase; color: #858585; border-bottom: 1px solid var(--border); letter-spacing: 1px; }
+        #timeline-content { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .event-card { background: #2d2d2d; border-radius: 4px; padding: 8px 12px; font-size: 12px; border-left: 3px solid var(--accent); animation: fadeIn 0.3s ease-out; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+
         #editor { flex: 1; width: 100%; font-size: 14px; }
         
-        #terminal-container { height: 200px; min-height: 40px; background: #000; display: flex; flex-direction: column; position: relative; border-top: 1px solid #333; }
+        /* Терминал */
+        #terminal-container { height: 200px; min-height: 40px; background: #000; display: flex; flex-direction: column; position: relative; border-top: 1px solid var(--border); }
         #terminal-resizer { height: 6px; background: #333; cursor: ns-resize; width: 100%; transition: background 0.2s; }
-        #terminal-resizer:hover { background: #007acc; }
-        .terminal-header { background: #1e1e1e; padding: 5px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        #terminal-resizer:hover { background: var(--accent); }
+        .terminal-header { background: #1e1e1e; padding: 5px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
         .terminal-title { font-size: 11px; color: #858585; text-transform: uppercase; }
         .terminal-content { flex: 1; padding: 10px; font-family: 'Consolas', monospace; color: #00ff00; overflow-y: auto; white-space: pre-wrap; font-size: 13px; }
         
-        .btn { border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; font-size: 12px; text-decoration: none; display: inline-block; text-align: center; }
+        /* Кнопки */
+        .btn { border: none; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; font-size: 12px; text-decoration: none; text-align: center; }
         .btn-run { background: #28a745; color: white; }
         .btn-ai { background: #3e3e42; color: #ccc; margin-top: 5px; width: 100%; text-align: left; border: 1px solid #454545; }
-        .btn-ai:hover { background: #007acc; color: white; border-color: #007acc; }
+        .btn-ai:hover { background: var(--accent); color: white; border-color: var(--accent); }
         .btn-fix { background: #d9534f; color: white; margin-top: 15px; width: 100%; }
         .btn-fix:hover { background: #c9302c; }
         
-        .btn-create { background: #444; color: #fff; font-size: 10px; padding: 4px 8px; margin-bottom: 15px; border: 1px dashed #666; }
         .project-link { display: block; color: #ccc; text-decoration: none; font-size: 13px; padding: 5px 8px; border-radius: 3px; margin-bottom: 2px; }
-        .project-link:hover { background: #37373d; color: #fff; }
-        .project-link.active { background: #37373d; color: #007acc; border-left: 2px solid #007acc; }
+        .project-link.active { background: #37373d; color: var(--accent); border-left: 2px solid var(--accent); }
     </style>
 </head>
 <body>
 
 <header>
-    <div style="font-size: 16px;">🚀 AI_IDE_PRO <span style="color: #6a9955;">— {{ doc.name }}</span></div>
+    <div style="font-size: 16px;">🚀 AI_IDE_PRO <span style="color: #6a9955;">— {{ doc.name|default:"main.py" }}</span></div>
     <div style="display: flex; align-items: center; gap: 15px;">
         <button class="btn btn-run" onclick="runCode()">▶ Run Code</button>
         <div class="user-control">
@@ -71,62 +93,24 @@
     </div>
 </div>
 
-<!-- <div id="loginModal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
-    <div style="background-color: #1e1e1e; margin: 15% auto; padding: 20px; border: 1px solid #333; width: 300px; color: white; border-radius: 8px;">
-        <span onclick="closeModal('login')" style="float: right; cursor: pointer; color: #888;">&times;</span>
-        <h3 style="margin-top: 0; color: #569cd6;">Вход</h3>
-        <input type="text" id="loginUsername" placeholder="Логин" style="width: 100%; margin-bottom: 10px; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; box-sizing: border-box;">
-        <input type="password" id="loginPassword" placeholder="Пароль" style="width: 100%; margin-bottom: 15px; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; box-sizing: border-box;">
-        <button onclick="submitLogin()" style="width: 100%; background: #007acc; color: white; border: none; padding: 10px; cursor: pointer; font-weight: bold;">Войти</button>
-    </div>
-</div>
 
-<div id="registerModal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
-    <div style="background-color: #1e1e1e; margin: 5% auto; padding: 25px; border: 1px solid #333; width: 350px; color: white; border-radius: 8px; font-family: sans-serif;">
-        <span onclick="closeModal('register')" style="float: right; cursor: pointer; color: #888; font-size: 20px;">&times;</span>
-        
-        <h2 style="color: #6a9955; text-align: center; margin-bottom: 20px;">Создать аккаунт</h2>
-        
-        <label style="display: block; font-size: 13px; margin-bottom: 5px;">Username:</label>
-        <input type="text" id="regUsername" style="width: 100%; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; box-sizing: border-box;">
-        <p style="font-size: 11px; color: #ccc; margin: 5px 0 15px 0;">Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.</p>
 
-        <label style="display: block; font-size: 13px; margin-bottom: 5px;">Email:</label>
-        <input type="email" id="regEmail" style="width: 100%; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; margin-bottom: 15px; box-sizing: border-box;">
 
-        <label style="display: block; font-size: 13px; margin-bottom: 5px;">Password:</label>
-        <input type="password" id="regPassword1" style="width: 100%; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; box-sizing: border-box;">
-        <ul style="font-size: 11px; color: #ccc; margin: 5px 0 15px 20px; padding: 0;">
-            <li>Your password must contain at least 8 characters.</li>
-            <li>Your password can't be entirely numeric.</li>
-        </ul>
-
-        <label style="display: block; font-size: 13px; margin-bottom: 5px;">Password confirmation:</label>
-        <input type="password" id="regPassword2" style="width: 100%; background: #2d2d2d; border: 1px solid #444; color: white; padding: 8px; border-radius: 4px; box-sizing: border-box;">
-        <p style="font-size: 11px; color: #ccc; margin: 5px 0 20px 0;">Enter the same password as before, for verification.</p>
-
-        <button onclick="submitRegister()" style="width: 100%; background: #28a745; color: white; border: none; padding: 12px; cursor: pointer; font-weight: bold; border-radius: 4px; font-size: 14px;">Зарегистрироваться</button>
-        
-        <div style="text-align: center; margin-top: 15px;">
-            <a href="#" onclick="closeModal('register')" style="color: #569cd6; text-decoration: none; font-size: 12px;">Назад к редактору</a>
-        </div>
-    </div>
-</div> -->
 
 <div class="main-container">
     <div class="sidebar">
-        <h3 style="margin: 0 0 10px 0; font-size: 14px; color: #6a9955;">📁 ПРОЕКТ</h3>
-        <a href="{% url 'create_project' %}" class="btn btn-create">+ Создать комнату</a>
+        <h3 style="margin: 0 0 10px 0; font-size: 12px; color: #858585; text-transform: uppercase;">📁 ПРОЕКТЫ</h3>
+        <a href="{% url 'create_project' %}" class="btn" style="background: #444; color: #fff; margin-bottom: 15px; border: 1px dashed #666;">+ Создать комнату</a>
 
         <div style="margin-bottom: 20px;">
             {% for project in user.projects.all %}
                 <a href="/?project_id={{ project.id }}" class="project-link {% if project.id == current_project.id %}active{% endif %}">
-                    ▶ {{ project.name }}
+                    {{ project.name }}
                 </a>
             {% endfor %}
         </div>
 
-        <h3 style="margin-top: 10px; font-size: 14px; color: #007acc;">✨ AI REFACTORING</h3>
+        <h3 style="margin-top: 10px; font-size: 12px; color: #858585; text-transform: uppercase;">✨ AI REFACTORING</h3>
         <div style="display: flex; flex-direction: column; gap: 5px;">
             <button class="btn btn-ai" onclick="applyAI('hints')">📝 Советы по улучшению</button>
             <button class="btn btn-ai" onclick="applyAI('rename')">🏷 Провести renaming</button>
@@ -145,11 +129,21 @@
             <div class="terminal-header">
                 <span class="terminal-title">Console Output</span>
                 <div>
-                    <button class="btn" style="background: #444; color: #ccc;" onclick="clearOutput()">Очистить</button>
-                    <button class="btn" style="background: #444; color: #ccc;" onclick="toggleTerminal()">Свернуть</button>
+                    <button class="btn" style="background: #333; color: #ccc;" onclick="document.getElementById('output').innerText = ''">Очистить</button>
+                    <button class="btn" style="background: #333; color: #ccc;" onclick="toggleTerminal()">Свернуть</button>
                 </div>
             </div>
             <div class="terminal-content" id="output">Terminal initialized...</div>
+        </div>
+    </div>
+
+    <div class="event-timeline">
+        <div class="timeline-header">Лента событий</div>
+        <div id="timeline-content">
+            <div class="event-card" style="border-left-color: #6a9955;">
+                <div style="font-size: 10px; color: #666; margin-bottom: 4px;">System</div>
+                <div style="color: #ccc;">Сессия запущена</div>
+            </div>
         </div>
     </div>
 </div>
@@ -168,95 +162,65 @@
         editor.session.setMode("ace/mode/python");
         editor.setShowPrintMargin(false);
         initResizer();
-
-        editor.on('change', () => {
-            document.getElementById('log').innerText = "Changes detected...";
-        });
     };
 
-    function clearOutput() {
-        document.getElementById('output').innerText = "";
-        lastError = "";
+    // Функция добавления события в Timeline (от фронта)
+    function addEvent(user, action) {
+        const container = document.getElementById('timeline-content');
+        const now = new Date();
+        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+        const card = document.createElement('div');
+        card.className = 'event-card';
+        if(user === 'AI') card.style.borderLeftColor = '#007acc';
+        card.innerHTML = `<div style="font-size: 10px; color: #666; margin-bottom: 4px;">${timeStr}</div><div style="color: #ccc;"><b>${user}:</b> ${action}</div>`;
+        container.prepend(card);
     }
 
     async function applyAI(action) {
-        const selectedText = editor.getSelectedText();
-        const fullCode = editor.getValue();
-        const codeToProcess = selectedText || fullCode;
-        const isSelection = !!selectedText;
-
+        const codeToProcess = editor.getSelectedText() || editor.getValue();
         document.getElementById('log').innerText = "AI анализирует...";
+        
+        try {
+            const res = await fetch('/ai-action/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ code: codeToProcess, action: action })
+            });
+            const data = await res.json();
+            if (data.result) {
+                if (editor.getSelectedText()) {
+                    editor.session.replace(editor.getSelectionRange(), data.result);
+                } else {
+                    editor.setValue(data.result, -1);
+                }
+                addEvent('AI', `Применил ${action}`);
+                document.getElementById('log').innerText = "AI: Успешно";
+            }
+        } catch (e) { document.getElementById('log').innerText = "Ошибка соединения"; }
+    }
+
+    async function fixError() {
+        const errorToFix = document.getElementById('output').innerText.trim() || lastError;
+        if (!errorToFix || errorToFix.includes("Terminal initialized")) return alert("Нет ошибки для исправления");
 
         try {
             const res = await fetch('/ai-action/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                body: JSON.stringify({ 
-                    code: codeToProcess,
-                    action: action 
-                })
+                body: JSON.stringify({ code: editor.getValue(), error_log: errorToFix, action: 'fix_error' })
             });
             const data = await res.json();
-
-            if (data.result) {
-                if (isSelection) {
-                    editor.session.replace(editor.getSelectionRange(), data.result);
-                } else {
-                    editor.setValue(data.result, -1);
-                }
-                document.getElementById('log').innerText = "AI: Успешно применено";
-            } else {
-                alert("Ошибка ИИ: " + (data.error || "Не удалось получить ответ"));
+            if (data.explanation && confirm("Причина: " + data.explanation + "\n\nИсправить?")) {
+                editor.setValue(data.result, -1);
+                addEvent('AI', 'Исправил ошибку в коде');
             }
-        } catch (e) {
-            document.getElementById('log').innerText = "Ошибка соединения";
-        }
-    }
-
-    async function fixError() {
-        const outputText = document.getElementById('output').innerText;
-        const errorToFix = outputText.trim() !== "" ? outputText : lastError;
-
-        if (!errorToFix || errorToFix.includes("Terminal initialized")) {
-            alert("Сначала запустите код, чтобы в консоли появился лог ошибки.");
-            return;
-        }
-
-        document.getElementById('log').innerText = "ИИ анализирует ошибку...";
-    
-        try {
-            const res = await fetch('/ai-action/', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json', 
-                    'X-CSRFToken': '{{ csrf_token }}' 
-                },
-                body: JSON.stringify({ 
-                    code: editor.getValue(),
-                    error_log: errorToFix,
-                    action: 'fix_error' 
-                })
-            });
-            
-            const data = await res.json();
-
-            if (data.explanation) {
-                const userAgreed = confirm("Причина ошибки:\n" + data.explanation + "\n\nИсправить код автоматически?");
-                if (userAgreed && data.result) {
-                    editor.setValue(data.result, -1);
-                    document.getElementById('log').innerText = "Код исправлен!";
-                }
-            } else {
-                alert("ИИ не смог распознать ошибку.");
-            }
-        } catch (e) {
-            alert("Ошибка сети или сервера: " + e);
-        }
+        } catch (e) { console.error(e); }
     }
 
     async function runCode() {
         const out = document.getElementById('output');
-        out.innerText = ">>> Running code...\n";
+        out.innerText = ">>> Running...\n";
+        addEvent('System', 'Запуск кода');
         try {
             const res = await fetch('/run/', {
                 method: 'POST',
@@ -296,7 +260,7 @@
     }
 
     async function sync() {
-        if (isSyncing) return;
+        if (isSyncing || !projectId) return;
         isSyncing = true;
         const formData = new FormData();
         formData.append('content', editor.getValue());
@@ -315,8 +279,10 @@
                 editor.setValue(data.content, -1);
                 editor.moveCursorToPosition(pos);
                 currentVersion = data.current_version;
+
             } else if (res.ok) {
                 const data = await res.json();
+                addEvent('System', 'Синхронизация с сервером');
                 currentVersion = data.new_version;
             }
         } catch (e) {} finally { isSyncing = false; }

@@ -120,6 +120,9 @@ def ai_action(request):
                 return JsonResponse({'error': 'Код пуст'}, status=400)
 
             # Вызываем AIService
+            if not code.strip():
+                return JsonResponse({'error': 'Код пуст'}, status=400)
+
             result = ai_service.process_action(action, code, error_log)
             return JsonResponse(result)
             
