@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 
 class Document(models.Model):
+    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='documents', null=True, blank=True)
     name = models.CharField(max_length=255, default="main.py")
     content = models.TextField(blank=True, default="")
     version = models.IntegerField(default=1)

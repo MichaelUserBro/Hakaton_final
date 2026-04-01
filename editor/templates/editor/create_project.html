@@ -18,10 +18,11 @@
         <h2>Новая комната</h2>
         <form method="POST">
             {% csrf_token %}
-            <input type="text" name="project_name" placeholder="Название (например, Команда Альфа)" required>
+            <input type="text" name="project_name" placeholder="Название" required>
             <button type="submit" class="btn">Создать и войти</button>
         </form>
-        <a href="{% url 'index' %}" class="back">Назад в редактор</a>
+        
+        <a href="{% url 'index' %}" class="back">Назад к редактору</a>
     </div>
 </body>
 </html>

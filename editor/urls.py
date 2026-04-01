@@ -10,4 +10,8 @@ urlpatterns = [
     path('profile/', views.profile, name='profile'),
     path('logout/', views.logout_user, name='logout'),
     path('create-project/', views.create_project, name='create_project'),
+    path('ai-review/', views.ai_review, name='ai_review'), 
+    # Добавляем маршрут для логики конфликтов из Этапа 2
+    path('resolve-conflict/', views.resolve_ai_conflict, name='resolve_ai_conflict'),
+    path('analyze/', views.ai_review, name='ai_review'),
 ]

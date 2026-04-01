@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>AI-Collaborative IDE 2.0</title>
+    <title>AI IDE 2.0 | Hackathon Edition</title>
     <style>
         body {
             background: #1e1e1e;
@@ -30,7 +30,6 @@
             overflow: hidden;
         }
 
-        /* Сайдбар */
         .sidebar {
             width: 250px;
             background: #252526;
@@ -40,19 +39,20 @@
             flex-direction: column;
         }
 
-            .sidebar h3 {
-                font-size: 12px;
-                text-transform: uppercase;
-                color: #858585;
-                letter-spacing: 1px;
-                margin-top: 0;
-            }
+        .sidebar h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #858585;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            margin-top: 20px;
+        }
 
         .user-item {
             display: flex;
             align-items: center;
             margin-bottom: 10px;
-            font-size: 14px;
+            font-size: 13px;
         }
 
         .user-status {
@@ -63,7 +63,6 @@
             margin-right: 10px;
         }
 
-        /* Редактор */
         .editor-area {
             flex: 1;
             display: flex;
@@ -76,52 +75,51 @@
             font-size: 14px;
         }
 
-        /* Панель AI с анимацией */
         #ai-panel {
             background: #1a2a3a;
             border-left: 4px solid #007acc;
             padding: 12px;
             font-size: 13px;
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-            #ai-panel.analyzing {
-                border-left-color: #4ec9b0;
-                animation: pulse 2s infinite;
-            }
+        #ai-panel.analyzing {
+            border-left-color: #4ec9b0;
+            animation: pulse 2s infinite;
+        }
 
         @keyframes pulse {
-            0% {
-                background: #1a2a3a;
-            }
-
-            50% {
-                background: #263e55;
-            }
-
-            100% {
-                background: #1a2a3a;
-            }
+            0% { background: #1a2a3a; }
+            50% { background: #263e55; }
+            100% { background: #1a2a3a; }
         }
 
         .ai-header {
             font-weight: bold;
             color: #4fc1ff;
-            margin-bottom: 4px;
+            margin-right: 10px;
         }
 
-        /* Терминал */
+        #ai-hints {
+            color: #dcdcdc;
+            font-style: italic;
+            flex: 1;
+        }
+
         .terminal {
-            height: 180px;
+            height: 160px;
             background: #000;
             border-top: 1px solid #333;
             padding: 10px;
-            font-family: monospace;
+            font-family: 'Consolas', monospace;
             color: #00ff00;
             overflow-y: auto;
+            white-space: pre-wrap;
         }
 
-        /* Уведомления */
         #notifications {
             position: fixed;
             top: 60px;
@@ -142,28 +140,33 @@
         }
 
         @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-            }
-
-            to {
-                transform: translateX(0);
-            }
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
         }
 
-        .btn-run {
-            background: #28a745;
-            color: white;
+        .btn {
             border: none;
             padding: 8px 16px;
             cursor: pointer;
             border-radius: 4px;
             font-weight: bold;
+            transition: 0.2s;
         }
 
-            .btn-run:hover {
-                background: #218838;
-            }
+        .btn-run {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-run:hover { background: #218838; }
+
+        .btn-ai {
+            background: #007acc;
+            color: white;
+            margin-top: 10px;
+            width: 100%;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -183,7 +186,7 @@
                 <a href="{% url 'profile' %}" class="btn-profile">
                     👤 {{ user.username }}
                 </a>
-                <a href="{% url 'logout' %}" style="color: #f44336; text-decoration: none; font-size: 12px; margin-left: 10px;">Выйти</a>
+                <a href="{% url 'logout' %}?next=/" style="color: #f44336; text-decoration: none;">Выйти</a>
             {% else %}
                 <a href="{% url 'register' %}" class="btn-profile">Войти / Регистрация</a>
             {% endif %}
@@ -191,48 +194,57 @@
     </div>
 </header>
 
-    <div class="main-container">
-        <div class="sidebar">
-            <div style="padding: 10px; border-bottom: 1px solid #3c3c3c; margin-bottom: 10px;">
-                <h3 style="margin: 0; font-size: 14px; color: #6a9955;">
-                    📁 Комната: {{ current_project.name|default:"Локальная сессия" }}
-                </h3>
-                {% if not current_project %}
-                    <a href="{% url 'create_project' %}" style="color: #569cd6; font-size: 11px; text-decoration: none;">+ Создать комнату</a>
-                {% endif %}
-            </div>
-
-            <div id="members-section">
-                <p style="font-size: 11px; color: #888; margin-left: 10px;">УЧАСТНИКИ:</p>
-                
-                {% if current_project %}
-                    {% for member in current_project.members.all %}
-                        <div class="user-item">
-                            <div class="user-status" style="background: {% if member.is_authenticated %}#6a9955{% else %}#888{% endif %};"></div>
-                            {{ member.username }} {% if member == user %}(Вы){% endif %}
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="user-item"><div class="user-status"></div> {{ user.username|default:"Student 1" }} (You)</div>
-                {% endif %}
-            </div>
-
-            <div id="log" style="margin-top: 20px; font-size: 11px; color: #666; padding: 10px;">
-                Waiting for changes...
-            </div>
+<div class="main-container">
+    
+    <div class="sidebar">
+        <div style="padding: 10px; border-bottom: 1px solid #3c3c3c; margin-bottom: 10px;">
+            <h3 style="margin: 0; font-size: 14px; color: #6a9955;">
+                📁 Комната: {{ current_project.name|default:"Локальная сессия" }}
+            </h3>
+            {% if not current_project %}
+                <a href="{% url 'create_project' %}" style="color: #569cd6; font-size: 11px; text-decoration: none;">+ Создать комнату</a>
+            {% endif %}
         </div>
 
-        <div class="editor-area">
-            <div id="ai-panel">
-                <div class="ai-header">🤖 AI REVIEWER</div>
-                <div id="ai-hints">Analyzing code patterns...</div>
-            </div>
-            <div id="editor">{{ doc.content }}</div>
+        <div id="members-section">
+            <p style="font-size: 11px; color: #888; margin-left: 10px;">УЧАСТНИКИ:</p>
+            {% if current_project %}
+                {% for member in current_project.members.all %}
+                    <div class="user-item">
+                        <div class="user-status" style="background: {% if member.is_authenticated %}#6a9955{% else %}#888{% endif %};"></div>
+                        {{ member.username }} {% if member == user %}(Вы){% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="user-item">
+                    <div class="user-status" style="background: #6a9955;"></div> 
+                    {{ user.username|default:"Student" }} (You)
+                </div>
+            {% endif %}
         </div>
+
+        <h3 style="margin-top: 20px;">AI Tools</h3>
+        <button class="btn btn-ai" onclick="resolveLineConflict()">✨ Fix Current Line</button>
+
+        <div id="log" style="margin-top: auto; font-size: 11px; color: #666; padding: 10px;">
+            Ready.
+        </div>
+    </div> <div class="editor-area">
+        <!-- <header style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #1e1e1e; border-bottom: 1px solid #333;">
+            <div style="font-size: 16px;">🚀 HACKATHON_PROJECT <span style="color: #6a9955;">— main.py</span></div>
+            <button class="btn btn-run" onclick="runCode()">▶ Run Code</button>
+        </header> --> 
+        <!-- САШИНА КНОПКА ВРОДЕ, Я ЕЕ УБРАЛА НЕ ЗНАЮ КАК ОФОРМИТЬ МОЮ ТАКЖЕ МОЯ НА СТРОКЕ 182-->
+
+        <div id="ai-panel">
+            <div class="ai-header">🤖 AI REVIEW:</div>
+            <div id="ai-hints">Analyzing code patterns...</div>
+        </div>
+        
+        <div id="editor" style="flex-grow: 1;">{{ doc.content }}</div>
+
+        <div class="terminal" id="output">Terminal initialized. Ready for execution...</div>
     </div>
-
-    <div class="terminal" id="output">Terminal initialized. Ready to execute Python...</div>
-
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
     <script>
@@ -247,25 +259,17 @@
             console.log("Редактор успешно загружен!");
         };
 
-        // Функция для уведомлений
         function showToast(message) {
             const container = document.getElementById('notifications');
             const toast = document.createElement('div');
             toast.className = 'toast';
             toast.innerText = message;
             container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 4000);
+            setTimeout(() => { 
+                toast.style.opacity = '0'; 
+                setTimeout(() => toast.remove(), 500); 
+            }, 4000);
         }
-
-        // Горячие клавиши (Ctrl+S)
-        editor.commands.addCommand({
-            name: 'save',
-            bindKey: { win: 'Ctrl-S', mac: 'Command-S' },
-            exec: function (editor) {
-                sync();
-                showToast("Код сохранен вручную (Ctrl+S)");
-            }
-        });
 
         async function sync() {
             if (isSyncing) return;
@@ -294,56 +298,126 @@
                 }
             } catch (e) { console.error(e); }
             finally { isSyncing = false; }
+            const formData = new FormData();
+            formData.append('content', content);
+            try {
+                const res = await fetch('/sync/', { method: 'POST', body: formData });
+                const data = await res.json();
+                if (data.content && data.content !== editor.getValue()) {
+                    const pos = editor.getCursorPosition();
+                    editor.setValue(data.content, -1);
+                    editor.moveCursorToPosition(pos);
+                    document.getElementById('log').innerText = "Last sync: " + new Date().toLocaleTimeString();
+                }
+            } catch (e) { console.error("Sync error"); }
         }
 
-        // AI Ревьюер с индикацией работы
+        // Исправлено: путь изменен на /ai-review/ для совпадения с urls.py
         async function getAIReview() {
             const aiPanel = document.getElementById('ai-panel');
+            const hintsElement = document.getElementById('ai-hints');
             aiPanel.classList.add('analyzing');
+
             try {
-                const res = await fetch('/ai-review/');
+                const res = await fetch('/ai-review/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: editor.getValue() })
+                });
                 const data = await res.json();
-                document.getElementById('ai-hints').innerText = data.hints.join(' | ');
-            } catch (e) { }
-            finally {
+                if (data.hints) {
+                    hintsElement.innerText = data.hints.join(' | ');
+                }
+            } catch (e) {
+                console.error("AI Review error");
+            } finally {
                 setTimeout(() => aiPanel.classList.remove('analyzing'), 1500);
             }
         }
 
-        async function runCode() {
-            const out = document.getElementById('output');
-            // Получаем код из редактора Ace
-            const codeToRun = editor.getValue(); 
+        // async function runCode() {
+        //     const out = document.getElementById('output');
+        //     // Получаем код из редактора Ace
+        //     const codeToRun = editor.getValue(); 
             
-            out.innerText = ">>> Running code...\n";
+        //     out.innerText = ">>> Running code...\n";
             
+        //     try {
+        //         const res = await fetch('/run/', {
+        //             method: 'POST', // ТУТ ИСПРАВЛЯЕМ GET НА POST
+        //             headers: {
+        //                 'Content-Type': 'application/x-www-form-urlencoded',
+        //             },
+        //             // Передаем код в теле запроса
+        //             body: 'content=' + encodeURIComponent(codeToRun)
+        //         });
+                
+        //         const data = await res.json();
+                
+        //         if (data.output) {
+        //             out.innerText = ">>> Result:\n" + data.output;
+        //         } else {
+        //             out.innerText = ">>> Код выполнен без вывода.";
+        //         }
+        //     } catch (e) { 
+        //         out.innerText = ">>> Ошибка соединения с сервером"; 
+        // Функция для кнопки "Fix Current Line" (Этап 2)
+        async function resolveLineConflict() {
+            const cursor = editor.getCursorPosition();
+            const currentLine = editor.session.getLine(cursor.row);
+            
+            showToast("AI анализирует строку...");
+
             try {
-                const res = await fetch('/run/', {
-                    method: 'POST', // ТУТ ИСПРАВЛЯЕМ GET НА POST
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    // Передаем код в теле запроса
-                    body: 'content=' + encodeURIComponent(codeToRun)
+                const res = await fetch('/resolve-conflict/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        variant_a: currentLine,
+                        variant_b: "" // В данном контексте передаем одну строку для улучшения
+                    })
                 });
-                
                 const data = await res.json();
-                
-                if (data.output) {
-                    out.innerText = ">>> Result:\n" + data.output;
-                } else {
-                    out.innerText = ">>> Код выполнен без вывода.";
+                if (data.best_variant) {
+                    showToast("Решение найдено!");
+                    // Для примера выводим в лог, можно сделать автозамену
+                    console.log("AI рекомендует:", data.best_variant);
                 }
-            } catch (e) { 
-                out.innerText = ">>> Ошибка соединения с сервером"; 
+            } catch (e) {
+                showToast("Ошибка ИИ");
             }
         }
 
-        // Имитация уведомления при старте
-        setTimeout(() => showToast("Студент 2 подключился к сессии"), 2000);
+        // Запуск кода с разделением потоков (Этап 3)
+        async function runCode() {
+            const out = document.getElementById('output');
+            out.innerText = ">>> Running...\n";
+            out.style.color = "#00ff00";
 
-        setInterval(sync, 2000);
-        setInterval(getAIReview, 5000);
+            try {
+                const res = await fetch('/run/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: editor.getValue() })
+                });
+                const data = await res.json();
+                
+                out.innerText = "";
+                if (data.stderr) {
+                    out.style.color = "#ff5555"; // Ошибки — красным
+                    out.innerText = data.stderr;
+                } else {
+                    out.style.color = "#50fa7b"; // Успех — зеленым
+                    out.innerText = data.stdout || "Success (no output)";
+                }
+            } catch (e) {
+                out.style.color = "#ff5555";
+                out.innerText = "Error: " + e;
+            }
+        }
+
+        setInterval(sync, 5000);
+        setInterval(getAIReview, 15000);
     </script>
 </body>
 </html>
