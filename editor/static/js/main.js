@@ -126,7 +126,6 @@ async function applyAI(action) {
     }
 }
 
-// 🐞 Исправление ошибки с диалогом подтверждения
 async function applyFix(code, errorLog) {
     setLog('AI анализирует ошибку...');
 
@@ -135,7 +134,7 @@ async function applyFix(code, errorLog) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken'),
+                'X-CSRFToken': window.CSRF_TOKEN || getCookie('csrftoken'),
             },
             body: JSON.stringify({ code, action: 'fix_error', error_log: errorLog })
         });
@@ -147,7 +146,10 @@ async function applyFix(code, errorLog) {
             return;
         }
 
-        showFixModal(data.explanation, data.result, code);
+        const explanation = data.explanation || 'Анализ завершён.';
+        const fixedCode = typeof data.result === 'string' ? data.result : code;
+
+        showFixModal(explanation, fixedCode, code);
         setLog('AI: анализ готов');
 
     } catch (e) {

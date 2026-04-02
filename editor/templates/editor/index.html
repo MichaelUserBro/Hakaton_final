@@ -449,10 +449,10 @@
             <button class="btn btn-ai" onclick="openSettings()">⚙️ Settings</button>
 
             <h3>AI Refactoring</h3>
-            <button class="btn btn-ai" onclick="applyAI('hints')">📝 Hints (Ctrl+I)</button>
-            <button class="btn btn-ai" onclick="applyAI('rename')">🏷 Renaming</button>
-            <button class="btn btn-ai" onclick="applyAI('readable')">📖 Readability</button>
-            <button class="btn btn-fix" onclick="applyAI('fix')">🐞 Fix Error</button>
+            <button class="btn btn-ai" onclick="applyAI('hints')">📝 Подсказки</button>
+            <button class="btn btn-ai" onclick="applyAI('rename')">🏷 Переименование</button>
+            <button class="btn btn-ai" onclick="applyAI('readable')">📖 Читаемость</button>
+            <button class="btn btn-fix" onclick="applyAI('fix')">🐞 Исправить ошибку</button>
 
             <div id="log" style="margin-top: 15px; font-size: 10px; color: #666; text-align: center;">Ready.</div>
         </div>
@@ -463,9 +463,12 @@
                 <div id="terminal-resizer"></div>
                 <div style="background:rgba(0,0,0,0.3); padding:5px 15px; font-size:11px; color:#858585; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
                     <span>CONSOLE</span>
-                    <button class="btn" style="width:auto; background:#333; color:#ccc; padding:2px 8px;" onclick="toggleTerminal()">Свернуть</button>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn" style="width:auto; background:#333; color:#ccc; padding:2px 8px;" title="Очистить" onclick="document.getElementById('output').innerText=''">🗑</button>
+                        <button class="btn" style="width:auto; background:#333; color:#ccc; padding:2px 8px;" title="Свернуть" onclick="toggleTerminal()">⬇</button>
+                    </div>
                 </div>
-                <div class="terminal-content" id="output">Terminal initialized...</div>
+                <div class="terminal-content" id="output" style="white-space: pre-wrap; word-break: break-all;">Terminal initialized...</div>
             </div>
         </div>
 
