@@ -40,20 +40,18 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Создать файл `.env`
+### 4. Настроить переменные окружения
 
-В папке `hackathon_ide/` создай файл `.env`:
-
+```bash
+cd hackathon_ide
+cp .env.example .env
 ```
-GROQ_API_KEY=your_groq_api_key_here
-```
 
-> Получить бесплатный API ключ: https://console.groq.com
+Файл `.env` с рабочим API ключом уже готов — ничего менять не нужно.
 
 ### 5. Применить миграции
 
 ```bash
-cd hackathon_ide
 python manage.py migrate
 ```
 
@@ -119,14 +117,15 @@ hackathon_ide/
 │       └── yjs.js          # Yjs библиотека
 ├── media/              # Аватарки пользователей
 ├── requirements.txt
-└── .env                # API ключи (не в репо)
+├── .env.example        # Готовый конфиг с API ключом
+└── .env                # Создаётся через cp .env.example .env
 ```
 
 ---
 
 ## Возможные проблемы
 
-**WebSocket не подключается** — убедись что сервер запущен через `python manage.py runserver`, а не через Gunicorn. Daphne встроен.
+**WebSocket не подключается** — убедись что сервер запущен через `python manage.py runserver`.
 
 **AI не работает** — проверь что `.env` файл находится в папке `hackathon_ide/` рядом с `manage.py`.
 
