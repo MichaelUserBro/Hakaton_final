@@ -1,56 +1,133 @@
-Вот три шага, которые сделают импорт удобным:
+# AI Collaborative IDE 🚀
 
-### 1. Создай файл `requirements.txt`
-Этот файл скажет компьютерам коллег, какие библиотеки нужно установить (Django, requests и т.д.).
-В терминале с активированным `(venv)` выполни:
-```powershell
-pip freeze > requirements.txt
+Веб-редактор кода с совместной работой в реальном времени и AI-функциями.
+
+## Стек технологий
+
+- **Backend:** Django 6.0.3 + Daphne + Django Channels (WebSocket)
+- **Frontend:** Vanilla JS + Ace Editor + Yjs (CRDT)
+- **AI:** Groq API (llama-3.1-8b-instant)
+- **Запуск кода:** Judge0 API
+- **БД:** SQLite
+
+## Быстрый старт
+
+### 1. Клонировать репозиторий
+
+```bash
+git clone https://github.com/MichaelUserBro/Hakaton_final.git
+cd Hakaton_final
+git checkout main
 ```
-*Теперь в корне проекта появился список всех нужных пакетов.*
+
+### 2. Создать виртуальное окружение
+
+**Windows:**
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
+
+**macOS / Linux:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+### 3. Установить зависимости
+
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Создать файл `.env`
+
+В папке `hackathon_ide/` создай файл `.env`:
+
+```
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+> Получить бесплатный API ключ: https://console.groq.com
+
+### 5. Применить миграции
+
+```bash
+cd hackathon_ide
+python manage.py migrate
+```
+
+### 6. Запустить сервер
+
+```bash
+python manage.py runserver
+```
+
+Открой браузер: **http://localhost:8000**
 
 ---
 
-### 2. Создай `README.md`
-[cite_start]Это «лицо» твоего проекта на GitHub[cite: 46]. Создай файл `README.md` в корне и вставь туда этот текст:
+## Функционал
 
-```markdown
-# AI-Collaborative IDE 2.0 🚀
+### 👥 Совместная разработка
+- Создай комнату через кнопку **+ New Room**
+- Скопируй инвайт-ссылку через кнопку **🔗 Invite** в профиле
+- Другой пользователь вставляет ссылку в **Join Room**
+- Код синхронизируется в реальном времени через Yjs CRDT
+- Видны курсоры и ники всех участников
 
-Прототип веб-IDE с поддержкой совместного редактирования и AI-ревьюером.
+### 🤖 AI-функции
+| Кнопка | Описание |
+|--------|----------|
+| 📝 Подсказки | Добавляет блок советов в начало файла |
+| 🏷 Переименование | Переименовывает переменные по PEP8 |
+| 📖 Читаемость | Улучшает читаемость кода |
+| 🐞 Исправить ошибку | Анализирует traceback и предлагает фикс |
 
-## Как запустить проект локально:
+> Выдели часть кода перед нажатием — AI обработает только выделенное
 
-1. **Клонируйте репозиторий:**
-   ```bash
-   git clone [https://github.com/ТВОЙ_ЛОГИН/ai-collaborative-ide.git](https://github.com/ТВОЙ_ЛОГИН/ai-collaborative-ide.git)
-   cd ai-collaborative-ide
-   ```
+### ▶ Запуск кода
+- Нажми **RUN** или `Ctrl+Enter`
+- Результат появится в консоли снизу
+- Консоль накапливает вывод, очищается кнопкой 🗑
 
-2. **Создайте и активируйте виртуальное окружение:**
-   ```bash
-   python -m venv venv
-   # Для Windows:
-   venv\Scripts\activate
-   # Для Mac/Linux:
-   source venv/bin/activate
-   ```
+### 🎨 Настройки
+- Три темы интерфейса: Dark, Light, Hacker
+- Четыре темы редактора: Monokai, GitHub, Terminal, Dracula
+- Размер шрифта: 12–18px
 
-3. **Установите зависимости:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+---
 
-4. **Примените миграции базы данных:**
-   ```bash
-   python manage.py migrate
-   ```
+## Структура проекта
 
-5. **Запустите сервер:**
-   ```bash
-   python manage.py runserver
-   ```
-   Откройте в браузере: `http://127.0.0.1:8000/`
+```
+hackathon_ide/
+├── core/               # Настройки Django
+│   ├── settings.py
+│   ├── asgi.py
+│   └── urls.py
+├── editor/             # Основное приложение
+│   ├── models.py       # Document, Project, UserProfile
+│   ├── views.py        # Все вьюхи
+│   ├── services.py     # AIService, PistonCodeRunner
+│   ├── consumers.py    # WebSocket consumer
+│   ├── templates/
+│   └── static/js/
+│       ├── editor-sync.js  # Yjs + WebSocket синхронизация
+│       ├── y-ace.js        # Биндинг Ace + курсоры
+│       ├── main.js         # Кнопки Run и AI
+│       └── yjs.js          # Yjs библиотека
+├── media/              # Аватарки пользователей
+├── requirements.txt
+└── .env                # API ключи (не в репо)
 ```
 
 ---
 
+## Возможные проблемы
+
+**WebSocket не подключается** — убедись что сервер запущен через `python manage.py runserver`, а не через Gunicorn. Daphne встроен.
+
+**AI не работает** — проверь что `.env` файл находится в папке `hackathon_ide/` рядом с `manage.py`.
+
+**Ошибка при миграциях** — удали `db.sqlite3` и запусти `migrate` заново.
