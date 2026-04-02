@@ -12,7 +12,6 @@ function getColor(clientId) {
     return CURSOR_COLORS[clientId % CURSOR_COLORS.length];
 }
 
-// Стили для курсоров
 if (!document.getElementById('cursor-styles')) {
     const style = document.createElement('style');
     style.id = 'cursor-styles';
@@ -34,6 +33,24 @@ if (!document.getElementById('cursor-styles')) {
             white-space: nowrap;
             pointer-events: none;
             z-index: 101;
+        }
+        .online-user-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 8px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            font-size: 11px;
+            border: 1px solid #30363D;
+            background: #21262D;
+        }
+        .online-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #3FB950;
+            flex-shrink: 0;
         }
     `;
     document.head.appendChild(style);
@@ -65,7 +82,6 @@ class AceBinding {
     _setupObservers() {
         const session = this.editor.session;
 
-        // 1. Из Yjs в Ace (удалённые правки)
         this._typeObserver = (event) => {
             if (this._mux) return;
             this._mux = true;
@@ -91,7 +107,6 @@ class AceBinding {
         };
         this.type.observe(this._typeObserver);
 
-        // 2. Из Ace в Yjs (локальные правки)
         this._aceObserver = (delta) => {
             if (this._mux) return;
             this._mux = true;
@@ -114,18 +129,16 @@ class AceBinding {
         const awareness = this.awareness;
         const editor = this.editor;
 
-        // Определяем имя пользователя из хедера страницы
-        const usernameEl = document.querySelector('span[style*="font-size: 13px"]');
-        const username = usernameEl
-            ? usernameEl.innerText.replace('👤', '').trim()
-            : 'User_' + Math.floor(Math.random() * 1000);
+        // Берём username из window.CURRENT_USERNAME (передаётся из Django)
+        const username = window.CURRENT_USERNAME || ('User_' + Math.floor(Math.random() * 1000));
+        const myColor = getColor(awareness.clientID);
 
         awareness.setLocalStateField('user', {
             name: username,
-            color: getColor(awareness.clientID)
+            color: myColor
         });
 
-        // Отправляем позицию курсора при его движении
+        // Отправляем позицию курсора при движении
         this._cursorObserver = () => {
             const cursor = editor.getCursorPosition();
             const doc = editor.session.getDocument();
@@ -138,7 +151,7 @@ class AceBinding {
         };
         editor.selection.on('changeCursor', this._cursorObserver);
 
-        // Слушаем изменения awareness от других и рендерим их курсоры
+        // Слушаем изменения awareness — курсоры + список участников
         this._awarenessObserver = ({ added, updated, removed }) => {
             [...added, ...updated].forEach(clientId => {
                 if (clientId === awareness.clientID) return;
@@ -150,8 +163,52 @@ class AceBinding {
             removed.forEach(clientId => {
                 this._removeCursor(clientId);
             });
+
+            // Обновляем список онлайн-участников в сайдбаре
+            this._updateUserList();
         };
         awareness.on('change', this._awarenessObserver);
+    }
+
+    _updateUserList() {
+        const awareness = this.awareness;
+        const userList = document.getElementById('user-list');
+        if (!userList) return;
+
+        const myUsername = window.CURRENT_USERNAME || 'You';
+
+        // Собираем всех участников кроме себя
+        const others = [];
+        awareness.getStates().forEach((state, clientId) => {
+            if (clientId === awareness.clientID) return;
+            if (state && state.user) {
+                others.push({ clientId, user: state.user });
+            }
+        });
+
+        // Перерисовываем список — себя оставляем первым
+        userList.innerHTML = `
+            <div class="online-user-badge">
+                <span class="online-dot"></span>
+                <div style="width:20px;height:20px;border-radius:50%;background:${getColor(awareness.clientID)};display:flex;justify-content:center;align-items:center;flex-shrink:0;">
+                    <span style="font-size:9px;color:white;font-weight:bold;">${myUsername.slice(0,1).toUpperCase()}</span>
+                </div>
+                <span>${myUsername} (you)</span>
+            </div>
+        `;
+
+        others.forEach(({ clientId, user }) => {
+            const badge = document.createElement('div');
+            badge.className = 'online-user-badge';
+            badge.innerHTML = `
+                <span class="online-dot" style="background:${user.color};"></span>
+                <div style="width:20px;height:20px;border-radius:50%;background:${user.color};display:flex;justify-content:center;align-items:center;flex-shrink:0;">
+                    <span style="font-size:9px;color:white;font-weight:bold;">${user.name.slice(0,1).toUpperCase()}</span>
+                </div>
+                <span>${user.name}</span>
+            `;
+            userList.appendChild(badge);
+        });
     }
 
     _renderCursor(clientId, state) {
@@ -175,7 +232,7 @@ class AceBinding {
 
         const cursorEl = document.createElement('div');
         cursorEl.className = 'remote-cursor';
-        cursorEl.style.cssText = `left: ${x}px; top: ${y}px; height: ${lineHeight}px; background: ${color};`;
+        cursorEl.style.cssText = `left:${x}px;top:${y}px;height:${lineHeight}px;background:${color};`;
 
         const label = document.createElement('div');
         label.className = 'remote-cursor-label';

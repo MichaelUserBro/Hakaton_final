@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+import uuid
 
 class Document(models.Model):
     project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='documents', null=True, blank=True)
@@ -29,6 +30,7 @@ class Project(models.Model):
     creator = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_projects')
     members = models.ManyToManyField(User, related_name='projects', verbose_name="Участники")
     created_at = models.DateTimeField(auto_now_add=True)
+    invite_token = models.UUIDField(default=uuid.uuid4, unique=True)
 
     def __str__(self):
         return self.name

@@ -20,8 +20,12 @@ function getCookie(name) {
 function printOutput(text, isError = false) {
     const output = document.getElementById('output');
     if (!output) return;
-    output.style.color = isError ? '#ff5555' : '#00ff00';
-    output.innerText = text;
+    const line = document.createElement('div');
+    line.style.color = isError ? '#ff5555' : '#00ff00';
+    line.style.whiteSpace = 'pre-wrap';
+    line.innerText = text;
+    output.appendChild(line);
+    output.scrollTop = output.scrollHeight;
 }
 
 function setLog(text) {
@@ -81,7 +85,8 @@ async function applyAI(action) {
         return;
     }
 
-    const code = editor.getValue();
+    const selectedText = editor.getSelectedText();
+    const code = selectedText.length > 0 ? selectedText : editor.getValue();
     if (!code.trim()) {
         setLog('Код пуст');
         return;
@@ -116,10 +121,16 @@ async function applyAI(action) {
 
         // Бэкенд всегда возвращает {"result": "..."}
         if (data.result) {
+        if (selectedText.length > 0) {
+            // Заменяем только выделенный фрагмент
+            editor.session.replace(editor.getSelectionRange(), data.result);
+        } else {
+            // Заменяем весь код
             editor.setValue(data.result, -1);
-            setLog('AI: код обновлён ✓');
-            if (typeof addEvent === 'function') addEvent('AI', action + ': код обновлён');
         }
+        setLog('AI: код обновлён ✓');
+        if (typeof addEvent === 'function') addEvent('AI', action + ': код обновлён');
+    }
 
     } catch (e) {
         setLog('Сетевая ошибка AI: ' + e.message);

@@ -108,33 +108,23 @@ def ai_action(request):
             action = data.get('action', '')
             error_log = data.get('error_log', '')
 
-            # --- ШАГ ПРОВЕРКИ (Смотри в терминал после нажатия кнопки) ---
-            print("\n" + "="*50)
-            print(f"AI ACTION DEBUG:")
-            print(f"Действие: {action}")
-            print(f"Длина лога ошибки: {len(error_log) if error_log else 0}")
-            print(f"Содержимое лога: {error_log}")
-            print("="*50 + "\n")
-            # ------------------------------------------------------------
+            
 
             if not code.strip():
                 return JsonResponse({'error': 'Код пуст'}, status=400)
 
-            # Вызываем AIService
+        
             if not code.strip():
                 return JsonResponse({'error': 'Код пуст'}, status=400)
 
             result = ai_service.process_action(action, code, error_log)
-            print(f"AI RESULT: {result}")
             return JsonResponse(result)
             
         except Exception as e:
-            print(f"CRITICAL ERROR IN VIEW: {str(e)}")
+            (f"CRITICAL ERROR IN VIEW: {str(e)}")
             return JsonResponse({'error': str(e)}, status=500)
             
     return JsonResponse({'error': 'POST required'}, status=405)
-
-# --- Аккаунты и проекты ---
 
 def register(request):
     if request.method == 'POST':
@@ -143,7 +133,8 @@ def register(request):
             user = form.save()
             login(request, user)
             messages.success(request, f'Аккаунт {user.username} создан!')
-            return redirect('index')
+            next_url = request.GET.get('next', '/')
+            return redirect(next_url)
     else:
         form = UserRegisterForm()
     return render(request, 'editor/register.html', {'form': form})
@@ -160,21 +151,19 @@ def create_project(request):
     return render(request, 'editor/create_project.html')
 
 @login_required
+@login_required
 def profile(request):
-    # 1. Получаем профиль текущего пользователя или создаем его, если его еще нет
     from .models import UserProfile
     user_profile, created = UserProfile.objects.get_or_create(user=request.user)
 
-    # 2. Если пользователь отправил форму с файлом
     if request.method == 'POST' and request.FILES.get('avatar'):
         user_profile.avatar = request.FILES['avatar']
         user_profile.save()
         return redirect('profile')
 
-    # 3. Собираем данные для отображения страницы
     return render(request, 'editor/profile.html', {
         'user': request.user,
-        'user_profile': user_profile, # Передаем профиль в шаблон
+        'user_profile': user_profile,
         'created_rooms': request.user.created_projects.all()
     })
 
@@ -186,8 +175,8 @@ def join_project(request, token):
     project = get_object_or_404(Project, invite_token=token)
     if request.user.is_authenticated:
         project.members.add(request.user)
-        return redirect('index')
-    return redirect('register')
+        return redirect(f'/?project_id={project.id}')
+    return redirect(f'/register/?next=/join/{token}/')
 
 
 
