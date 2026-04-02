@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI IDE 2.0 | Collaborative Edition</title>
+    {% load static %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <style>
         /* Переменные тем */
         :root {
@@ -74,7 +77,6 @@
             overflow: hidden;
         }
 
-        /* Sidebars */
         .sidebar {
             width: 250px;
             background: var(--bg-sidebar);
@@ -115,14 +117,6 @@
             border: 1px solid var(--border);
         }
 
-        .user-status {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: var(--success);
-            box-shadow: 0 0 5px var(--success);
-        }
-
         .editor-area {
             flex: 1;
             display: flex;
@@ -152,9 +146,9 @@
             width: 100%;
         }
 
-            #terminal-resizer:hover {
-                background: var(--accent);
-            }
+        #terminal-resizer:hover {
+            background: var(--accent);
+        }
 
         .terminal-content {
             flex: 1;
@@ -185,10 +179,10 @@
             display: block;
         }
 
-            .btn:hover {
-                filter: brightness(1.1);
-                transform: translateY(-1px);
-            }
+        .btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
 
         .btn-run {
             background: var(--success);
@@ -206,9 +200,9 @@
             border: 1px solid var(--border);
         }
 
-            .btn-ai:hover {
-                border-color: var(--accent);
-            }
+        .btn-ai:hover {
+            border-color: var(--accent);
+        }
 
         .btn-fix {
             background: var(--error);
@@ -225,6 +219,21 @@
             border-left: 3px solid var(--accent);
             margin: 5px 10px;
             color: var(--text);
+        }
+
+        /* Sync status */
+        #sync-status {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--error);
+            display: inline-block;
+            margin-right: 5px;
+            transition: 0.3s;
+        }
+        #sync-status.online {
+            background: var(--success);
+            box-shadow: 0 0 5px var(--success);
         }
 
         /* Modal */
@@ -255,34 +264,34 @@
             margin-bottom: 18px;
         }
 
-            .settings-group label {
-                display: block;
-                font-size: 11px; /* Чуть увеличил */
-                color: #858585;
-                margin-bottom: 8px;
-                text-transform: uppercase;
-            }
+        .settings-group label {
+            display: block;
+            font-size: 11px;
+            color: #858585;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
 
         .settings-select, .modal-input {
             width: 100%;
             background: var(--bg-main);
             color: var(--text);
             border: 1px solid var(--border);
-            padding: 12px; /* Увеличил отступы */
+            padding: 12px;
             border-radius: 6px;
-            font-size: 14px; /* Увеличил шрифт в селектах */
+            font-size: 14px;
             box-sizing: border-box;
         }
 
         .btn-save, .btn-modal-primary {
             width: 100%;
-            padding: 14px; /* Кнопка стала больше */
+            padding: 14px;
             background: var(--accent);
             color: white;
             border: none;
             border-radius: 6px;
             font-weight: bold;
-            font-size: 14px; /* Шрифт в кнопке больше */
+            font-size: 14px;
             cursor: pointer;
             margin-top: 15px;
             transition: 0.2s opacity;
@@ -292,27 +301,48 @@
             background: var(--success);
         }
 
-            .btn-save:hover {
-                opacity: 0.9;
-            }
+        .btn-save:hover {
+            opacity: 0.9;
+        }
+
+        .project-link {
+            display: block;
+            color: var(--text);
+            text-decoration: none;
+            font-size: 11px;
+            padding: 5px 8px;
+            border-radius: 4px;
+            margin-bottom: 2px;
+        }
+
+        .project-link:hover {
+            background: var(--hover);
+        }
+
+        .project-link.active {
+            background: var(--hover);
+            color: var(--accent);
+            border-left: 2px solid var(--accent);
+        }
     </style>
 </head>
 <body class="dark-theme">
 
     <header>
         <div style="font-size: 16px; font-weight: bold; display: flex; align-items: center; gap: 10px;">
+            <span id="sync-status"></span>
             <span style="color: var(--accent);">🚀</span> AI_IDE_PRO
             <span style="color: #666; font-weight: normal;">|</span>
-            <span style="color: var(--success); font-family: 'JetBrains Mono'; font-size: 14px;">{{ doc.name|default:"main.py" }}</span>
+            <span style="color: var(--success); font-family: 'JetBrains Mono'; font-size: 14px;">{{ current_project.name|default:"main.py" }}</span>
         </div>
         <div style="display: flex; align-items: center; gap: 15px;">
             <button class="btn btn-run" onclick="runCode()">▶ RUN (Ctrl+Enter)</button>
             <div style="font-size: 13px;">
                 {% if user.is_authenticated %}
-                <a href="{% url 'profile' %}" 
-                    style="opacity: 0.7; cursor: pointer; text-decoration: none; color: inherit;"
+                <a href="{% url 'profile' %}"
+                    style="opacity: 0.7; cursor: pointer; text-decoration: none; color: inherit; margin-right: 10px;"
                     title="Открыть профиль">
-                        👤 {{ user.username }}
+                    👤 {{ user.username }}
                 </a>
                 <a href="{% url 'logout' %}?next=/" style="color: var(--error); text-decoration: none;">Exit</a>
                 {% else %}
@@ -323,6 +353,7 @@
         </div>
     </header>
 
+    <!-- Login Modal -->
     <div id="loginModal" class="modal">
         <div class="modal-content">
             <span onclick="closeModal('login')" style="float: right; cursor: pointer; color: #888; font-size: 20px;">&times;</span>
@@ -339,76 +370,7 @@
         </div>
     </div>
 
-    <div class="main-container">
-        <div class="sidebar">
-            <h3 style="margin-top:0">📁 Room</h3>
-            <a href="{% url 'create_project' %}" class="btn btn-ai" style="margin-bottom: 10px; text-decoration: none;">+ New Room</a>
-
-            <div style="overflow-y: auto; max-height: 150px; margin-bottom: 10px;">
-                {% for project in user.projects.all %}
-                <a href="/?project_id={{ project.id }}" style="display:block; padding:6px; color:var(--text); text-decoration:none; font-size:11px; border-radius: 4px; margin-bottom: 2px;" class="{% if project.id == current_project.id %}active{% endif %}" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background='transparent'">
-                    📄 {{ project.name }}
-                </a>
-                {% endfor %}
-            </div>
-
-            <h3>👥 Collaborators</h3>
-            <div id="user-list">
-                <div class="user-badge" style="display: flex; align-items: center; gap: 8px;">
-                    <div class="user-status" style="
-                        width: 24px; 
-                        height: 24px; 
-                        border-radius: 50%; 
-                        overflow: hidden; 
-                        background-color: #6a9955; 
-                        display: flex; 
-                        justify-content: center; 
-                        align-items: center;
-                        border: none;
-                        flex-shrink: 0;
-                    ">
-                        {% if user.profile.avatar %}
-                            <img src="{{ user.profile.avatar.url }}" style="width: 100%; height: 100%; object-fit: cover;">
-                        {% else %}
-                            <span style="font-size: 10px; color: white; font-weight: bold;">
-                                {{ user.username|default:"G"|slice:":1"|upper }}
-                            </span>
-                        {% endif %}
-                    </div>
-                    
-                    <span style="font-size: 14px; color: #dcdcdc;">
-                        {{ user.username|default:"Guest" }} (You)
-                    </span>
-                </div>
-            </div>
-
-            <h3>Editor Config</h3>
-            <button class="btn btn-ai" onclick="openSettings()">⚙️ Settings</button>
-
-            <h3>AI Refactoring</h3>
-            <button class="btn btn-ai" onclick="applyAI('hints')">📝 Hints (Ctrl+I)</button>
-            <button class="btn btn-ai" onclick="applyAI('rename')">🏷 Renaming</button>
-            <button class="btn btn-ai" onclick="applyAI('readable')">📖 Readability</button>
-            <button class="btn btn-fix" onclick="fixError()">🐞 Fix Error</button>
-
-            <div id="log" style="margin-top: 15px; font-size: 10px; color: #666; text-align: center;">Ready.</div>
-        </div>
-
-        <div class="editor-area">
-            <div id="editor">{{ doc.content }}</div>
-            <div id="terminal-container">
-                <div id="terminal-resizer"></div>
-                <div style="background:rgba(0,0,0,0.3); padding:5px 15px; font-size:11px; color:#858585; border-bottom:1px solid var(--border);">CONSOLE</div>
-                <div class="terminal-content" id="output">Terminal initialized...</div>
-            </div>
-        </div>
-
-        <div class="event-timeline">
-            <div class="timeline-header" style="padding: 15px 15px 5px 15px;">Timeline</div>
-            <div id="timeline-content" style="overflow-y: auto; flex: 1;"></div>
-        </div>
-    </div>
-
+    <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top: 0; color: var(--accent); font-size: 18px; margin-bottom: 20px;">Editor Settings</h3>
@@ -442,189 +404,135 @@
         </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <div class="main-container">
+        <div class="sidebar">
+            <h3 style="margin-top:0">📁 Room</h3>
+            <a href="{% url 'create_project' %}" class="btn btn-ai" style="margin-bottom: 10px; text-decoration: none;">+ New Room</a>
+
+            <div style="overflow-y: auto; max-height: 150px; margin-bottom: 10px;">
+                {% for project in user.projects.all %}
+                <a href="/?project_id={{ project.id }}" class="project-link {% if project.id == current_project.id %}active{% endif %}">
+                    📄 {{ project.name }}
+                </a>
+                {% endfor %}
+            </div>
+
+            <h3>👥 Collaborators</h3>
+            <div id="user-list">
+                <div class="user-badge">
+                    <div style="
+                        width: 24px;
+                        height: 24px;
+                        border-radius: 50%;
+                        overflow: hidden;
+                        background-color: #6a9955;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        flex-shrink: 0;
+                    ">
+                        {% if user.profile.avatar %}
+                            <img src="{{ user.profile.avatar.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        {% else %}
+                            <span style="font-size: 10px; color: white; font-weight: bold;">
+                                {{ user.username|default:"G"|slice:":1"|upper }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <span style="font-size: 14px; color: #dcdcdc;">
+                        {{ user.username|default:"Guest" }} (You)
+                    </span>
+                </div>
+            </div>
+
+            <h3>Editor Config</h3>
+            <button class="btn btn-ai" onclick="openSettings()">⚙️ Settings</button>
+
+            <h3>AI Refactoring</h3>
+            <button class="btn btn-ai" onclick="applyAI('hints')">📝 Hints (Ctrl+I)</button>
+            <button class="btn btn-ai" onclick="applyAI('rename')">🏷 Renaming</button>
+            <button class="btn btn-ai" onclick="applyAI('readable')">📖 Readability</button>
+            <button class="btn btn-fix" onclick="applyAI('fix')">🐞 Fix Error</button>
+
+            <div id="log" style="margin-top: 15px; font-size: 10px; color: #666; text-align: center;">Ready.</div>
+        </div>
+
+        <div class="editor-area">
+            <div id="editor"></div>
+            <div id="terminal-container">
+                <div id="terminal-resizer"></div>
+                <div style="background:rgba(0,0,0,0.3); padding:5px 15px; font-size:11px; color:#858585; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                    <span>CONSOLE</span>
+                    <button class="btn" style="width:auto; background:#333; color:#ccc; padding:2px 8px;" onclick="toggleTerminal()">Свернуть</button>
+                </div>
+                <div class="terminal-content" id="output">Terminal initialized...</div>
+            </div>
+        </div>
+
+        <div class="event-timeline">
+            <div class="timeline-header" style="padding: 15px 15px 5px 15px;">Timeline</div>
+            <div id="timeline-content" style="overflow-y: auto; flex: 1; padding: 5px;"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.32.6/ace.js"></script>
+
+    <script src="{% static 'js/yjs.js' %}"></script>
+    <script src="{% static 'js/awareness.js' %}"></script>
     <script>
-    var editor;
-    var currentVersion = parseInt("{{ doc.version|default:0 }}");
-    var projectId = "{{ current_project.id|default:'' }}";
-    var isSyncing = false;
+        window.Y = window.Y || window.Yjs;
+        // Передаём Django-переменные в JS
+        window.PROJECT_ID = "{{ current_project.id|default:'' }}";
+        window.CSRF_TOKEN = "{{ csrf_token }}";
+        window.DOC_VERSION = parseInt("{{ doc.version|default:0 }}");
+        var INITIAL_CONTENT = "{{ doc.content|default:''|escapejs }}";
 
-    window.onload = function() {
-        editor = ace.edit("editor");
-        editor.setTheme("ace/theme/monokai");
-        editor.session.setMode("ace/mode/python");
-        editor.setShowPrintMargin(false);
-        editor.setOptions({
-            fontFamily: "JetBrains Mono",
-            fontSize: "14px",
-            enableBasicAutocompletion: true
-        });
+        // Настройки редактора
+        function openModal(id) { document.getElementById(id + 'Modal').style.display = 'block'; }
+        function closeModal(id) { document.getElementById(id + 'Modal').style.display = 'none'; }
+        function openSettings() { openModal('settings'); }
+        function closeSettings() { closeModal('settings'); }
 
-        const savedUI = localStorage.getItem('uiTheme');
-        if(savedUI) { document.body.className = savedUI; document.getElementById('uiThemeSelect').value = savedUI; }
-
-        editor.commands.addCommand({
-            name: 'save',
-            bindKey: {win: 'Ctrl-S', mac: 'Command-S'},
-            exec: function(editor) { sync(); addEvent('System', 'Saved (Ctrl+S)'); }
-        });
-
-        editor.commands.addCommand({
-            name: 'run',
-            bindKey: {win: 'Ctrl-Enter', mac: 'Command-Enter'},
-            exec: function(editor) { runCode(); }
-        });
-
-        initResizer();
-    };
-
-    function openModal(id) { document.getElementById(id + 'Modal').style.display = 'block'; }
-    function closeModal(id) { document.getElementById(id + 'Modal').style.display = 'none'; }
-    function openSettings() { openModal('settings'); }
-    function closeSettings() { closeModal('settings'); }
-
-    function applySettings() {
-        const uiTheme = document.getElementById('uiThemeSelect').value;
-        const editorTheme = document.getElementById('themeSelect').value;
-        const fontSize = document.getElementById('fontSizeSelect').value;
-
-        document.body.className = uiTheme;
-        localStorage.setItem('uiTheme', uiTheme);
-
-        editor.setTheme(editorTheme);
-        editor.setOptions({ fontSize: fontSize });
-    }
-
-    // --- AI FUNCTIONS ---
-    async function applyAI(type) {
-        addEvent('AI', `Processing ${type}...`);
-        const btnLog = document.getElementById('log');
-        btnLog.innerText = "AI is thinking...";
-
-        try {
-            const res = await fetch('/ai/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                body: JSON.stringify({
-                    type: type,
-                    code: editor.getValue(),
-                    project_id: projectId
-                })
-            });
-            const data = await res.json();
-            if (data.code) {
-                editor.setValue(data.code, -1);
-                addEvent('AI', `${type} applied!`);
+        function applySettings() {
+            const uiTheme = document.getElementById('uiThemeSelect').value;
+            const editorTheme = document.getElementById('themeSelect').value;
+            const fontSize = document.getElementById('fontSizeSelect').value;
+            document.body.className = uiTheme;
+            localStorage.setItem('uiTheme', uiTheme);
+            if (typeof editor !== 'undefined') {
+                editor.setTheme(editorTheme);
+                editor.setOptions({ fontSize: fontSize });
             }
-        } catch (e) {
-            console.error("AI Error:", e);
-            addEvent('System', 'AI Error');
-        } finally {
-            btnLog.innerText = "Ready.";
         }
-    }
 
-    async function fixError() {
-        const errorText = document.getElementById('output').innerText;
-        addEvent('AI', 'Attempting to fix error...');
-
-        try {
-            const res = await fetch('/fix/', {
+        function submitLogin() {
+            const user = document.getElementById('loginUsername').value;
+            const pass = document.getElementById('loginPassword').value;
+            if (!user || !pass) return alert("Fill all fields");
+            fetch('/login/', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                body: JSON.stringify({
-                    error: errorText,
-                    code: editor.getValue()
-                })
-            });
-            const data = await res.json();
-            if (data.code) {
-                editor.setValue(data.code, -1);
-                addEvent('AI', 'Error fixed!');
-            }
-        } catch (e) {
-            addEvent('System', 'Fix failed');
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN },
+                body: JSON.stringify({ username: user, password: pass })
+            })
+            .then(r => r.json())
+            .then(data => data.success ? location.reload() : alert(data.message))
+            .catch(e => console.error(e));
         }
-    }
-    // --------------------
 
-    function addEvent(user, action) {
-        const container = document.getElementById('timeline-content');
-        const now = new Date();
-        const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-        const card = document.createElement('div');
-        card.className = 'event-card';
-        card.innerHTML = `<div style="font-size: 10px; opacity: 0.5;">${timeStr}</div><div><b>${user}:</b> ${action}</div>`;
-        container.prepend(card);
-    }
-
-    async function runCode() {
-        const out = document.getElementById('output');
-        out.innerText = ">>> Running command...\n";
-        addEvent('You', 'запустил код');
-        try {
-            const res = await fetch('/run/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-                body: JSON.stringify({ code: editor.getValue() })
-            });
-            const data = await res.json();
-            out.innerText = data.stderr || data.stdout || "Execution finished (no output).";
-            out.style.color = data.stderr ? "var(--error)" : "var(--success)";
-        } catch (e) { out.innerText = "Error: " + e; }
-    }
-
-    async function sync() {
-        if (isSyncing || !projectId) return;
-        isSyncing = true;
-        const formData = new FormData();
-        formData.append('content', editor.getValue());
-        formData.append('version', currentVersion);
-        formData.append('project_id', projectId);
-        try {
-            const res = await fetch('/sync/', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-CSRFToken': '{{ csrf_token }}' }
-            });
-            const data = await res.json();
-            if (res.status === 409) {
-                editor.setValue(data.content, -1);
-                currentVersion = data.current_version;
-            } else if (res.ok) {
-                currentVersion = data.new_version;
+        // Восстанавливаем тему при загрузке
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedUI = localStorage.getItem('uiTheme');
+            if (savedUI) {
+                document.body.className = savedUI;
+                const sel = document.getElementById('uiThemeSelect');
+                if (sel) sel.value = savedUI;
             }
-        } catch (e) {} finally { isSyncing = false; }
-    }
-    setInterval(sync, 3000);
-
-    function submitLogin() {
-        const user = document.getElementById('loginUsername').value;
-        const pass = document.getElementById('loginPassword').value;
-        if (!user || !pass) return alert("Fill all fields");
-
-        fetch('/login/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-            body: JSON.stringify({username: user, password: pass})
-        })
-        .then(r => r.json())
-        .then(data => data.success ? location.reload() : alert(data.message))
-        .catch(e => console.error(e));
-    }
-
-    function initResizer() {
-        const resizer = document.getElementById('terminal-resizer');
-        const term = document.getElementById('terminal-container');
-        let isResizing = false;
-        resizer.addEventListener('mousedown', () => isResizing = true);
-        document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-            let h = window.innerHeight - e.clientY;
-            if (h > 40 && h < 500) term.style.height = h + 'px';
         });
-        document.addEventListener('mouseup', () => { isResizing = false; editor.resize(); });
-    }
     </script>
+
+    <script src="{% static 'js/y-ace.js' %}"></script>
+    <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/editor-sync.js' %}"></script>
+
 </body>
 </html>
