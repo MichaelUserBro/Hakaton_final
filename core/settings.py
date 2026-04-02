@@ -123,3 +123,9 @@ STATIC_URL = 'static/'
 LOGIN_URL = 'register'  # Или 'login', если у тебя есть отдельная страница входа
 LOGIN_REDIRECT_URL = 'index'
 LOGOUT_REDIRECT_URL = 'index'
+
+
+import os
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -57,7 +57,7 @@
 </head>
 <body>
     <div class="register-container">
-        <h2>Создать аккаунт</h2>
+        <h2>Create account</h2>
         <form method="POST">
             {% csrf_token %}
             
@@ -75,9 +75,9 @@
             {% endif %}
 
             {{ form.as_p }}
-            <button type="submit" class="btn-submit">Зарегистрироваться</button>
+            <button type="submit" class="btn-submit">Register</button>
         </form>
-        <a href="{% url 'index' %}" class="login-link">Назад к редактору</a>
+        <a href="{% url 'index' %}" class="login-link">Back to editor</a>
     </div>
 </body>
 </html>

@@ -11,7 +11,8 @@ from django.contrib import messages
 from .models import Document, UserProfile, Project
 from .forms import UserRegisterForm
 from .services import PistonCodeRunner, AIService
-
+from django.contrib.auth.decorators import login_required
+from .models import UserProfile, Project # Убедись, что модель называется Project или Room
 
 
 # Инициализируем сервисы
@@ -159,8 +160,20 @@ def create_project(request):
 
 @login_required
 def profile(request):
+    # 1. Получаем профиль текущего пользователя или создаем его, если его еще нет
+    from .models import UserProfile
+    user_profile, created = UserProfile.objects.get_or_create(user=request.user)
+
+    # 2. Если пользователь отправил форму с файлом
+    if request.method == 'POST' and request.FILES.get('avatar'):
+        user_profile.avatar = request.FILES['avatar']
+        user_profile.save()
+        return redirect('profile')
+
+    # 3. Собираем данные для отображения страницы
     return render(request, 'editor/profile.html', {
         'user': request.user,
+        'user_profile': user_profile, # Передаем профиль в шаблон
         'created_rooms': request.user.created_projects.all()
     })
 
@@ -202,3 +215,14 @@ def login_view(request):
             return JsonResponse({'success': False, 'message': 'Ошибка данных'}, status=400)
             
     return JsonResponse({'success': False, 'message': 'Метод не разрешен'}, status=405)
+
+
+@login_required
+def delete_room(request, room_id):
+    # Находим проект, проверяя, что текущий пользователь — его создатель
+    project = get_object_or_404(Project, id=room_id, creator=request.user)
+    
+    if request.method == 'POST':
+        project.delete()
+        
+    return redirect('profile')

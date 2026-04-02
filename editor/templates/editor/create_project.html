@@ -15,14 +15,14 @@
 </head>
 <body>
     <div class="form-container">
-        <h2>Новая комната</h2>
+        <h2>New room</h2>
         <form method="POST">
             {% csrf_token %}
-            <input type="text" name="project_name" placeholder="Название" required>
-            <button type="submit" class="btn">Создать и войти</button>
+            <input type="text" name="project_name" placeholder="Name" required>
+            <button type="submit" class="btn">Create and log in</button>
         </form>
         
-        <a href="{% url 'index' %}" class="back">Назад к редактору</a>
+        <a href="{% url 'index' %}" class="back">Back to editor</a>
     </div>
 </body>
 </html>

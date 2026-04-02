@@ -309,7 +309,11 @@
             <button class="btn btn-run" onclick="runCode()">▶ RUN (Ctrl+Enter)</button>
             <div style="font-size: 13px;">
                 {% if user.is_authenticated %}
-                <span style="opacity: 0.7;">👤 {{ user.username }}</span> |
+                <a href="{% url 'profile' %}" 
+                    style="opacity: 0.7; cursor: pointer; text-decoration: none; color: inherit;"
+                    title="Открыть профиль">
+                        👤 {{ user.username }}
+                </a>
                 <a href="{% url 'logout' %}?next=/" style="color: var(--error); text-decoration: none;">Exit</a>
                 {% else %}
                 <a href="#" onclick="openModal('login')" style="color: var(--accent); text-decoration: none; margin-right: 10px;">Login</a>

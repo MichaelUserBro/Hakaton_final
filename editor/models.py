@@ -14,8 +14,10 @@ class Document(models.Model):
 from django.contrib.auth.models import User
 
 class UserProfile(models.Model):
+    
     # Связываем профиль с системным пользователем Django
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True, verbose_name="Аватарка")
     # Твое дополнительное поле
     project_name = models.CharField(max_length=255, verbose_name="Название проекта")
 

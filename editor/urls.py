@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -15,4 +17,8 @@ urlpatterns = [
     path('create-project/', views.create_project, name='create_project'),
     path('join/<uuid:token>/', views.join_project, name='join_project'),
     path('login/', views.login_view, name='login'),
+    path('delete-room/<int:room_id>/', views.delete_room, name='delete_room'),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -4,6 +4,32 @@
     <meta charset="UTF-8">
     <title>Профиль — {{ user.username }}</title>
     <style>
+        .user-info {
+            flex: 1; /* Занимает 1 часть места */
+            border-right: 1px solid #333;
+            padding-right: 20px;
+        }
+        .user-rooms::-webkit-scrollbar {
+            width: 8px;
+        }
+        .user-rooms::-webkit-scrollbar-track {
+            background: #1e1e1e; /* Фон дорожки */
+        }
+        .user-rooms::-webkit-scrollbar-thumb {
+            background: #333; /* Цвет бегунка */
+            border-radius: 4px;
+            border: 1px solid #1e1e1e;
+        }
+        .user-rooms::-webkit-scrollbar-thumb:hover {
+            background: #6a9955; /* Цвет бегунка при наведении (твой зеленый) */
+        }
+
+        /* Сетка для комнат */
+        .rooms-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Две равные колонки */
+            gap: 15px;
+        }
         body {
             background-color: #1e1e1e;
             color: #d4d4d4;
@@ -16,10 +42,13 @@
         }
         .profile-container {
             background-color: #252526;
-            border: 1px solid #3c3c3c;
+            border: 1px solid #333c3c;
             border-radius: 8px;
-            padding: 40px;
-            width: 450px;
+            padding: 30px;
+            /* ГЛАВНОЕ ИЗМЕНЕНИЕ: */
+            width: 850px; 
+            display: flex; /* Делает колонки гибкими */
+            gap: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         .user-header {
@@ -52,7 +81,12 @@
         }
         .label { color: #9cdcfe; }
         .value { color: #ce9178; }
-        
+        .user-rooms {
+            flex: 2; /* Занимает 2 части места (шире для сетки) */
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
         .btn-back {
             display: block;
             text-align: center;
@@ -71,35 +105,81 @@
 </head>
 <body>
     <div class="profile-container" style="display: flex; gap: 40px; padding: 20px; color: white; background: #1e1e1e;">
-    
     <div class="user-info" style="flex: 1; border-right: 1px solid #333; padding-right: 20px;">
-        <h1 style="color: #6a9955;">@{{ user.username }}</h1>
-        <p>Email: {{ user.email }}</p>
-        <p>Дата регистрации: {{ user.date_joined|date:"d.m.Y" }}</p>
-        <a href="{% url 'logout' %}" style="color: #f44336; text-decoration: none;">Выйти из аккаунта</a>
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+            <div class="avatar-circle" style="width: 70px; height: 70px; overflow: hidden; background-color: #6a9955; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 2px solid #3c3c3c; flex-shrink: 0;">
+                {% if user_profile.avatar %}
+                    <img src="{{ user_profile.avatar.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                    <span style="font-size: 28px; color: white;">{{ user.username|slice:":1"|upper }}</span>
+                {% endif %}
+            </div>
+
+            <form method="POST" enctype="multipart/form-data" id="avatarForm" style="margin: 0;">
+                {% csrf_token %}
+                <input type="file" name="avatar" id="avatarInput" style="display: none;" onchange="document.getElementById('avatarForm').submit();">
+                <label for="avatarInput" style="cursor: pointer; color: #569cd6; font-size: 12px; text-decoration: underline; opacity: 0.8;">
+                    Edit Photo
+                </label>
+            </form>
+        </div>
+
+        <h1 style="color: #6a9955; margin: 0 0 10px 0; font-size: 22px;">@{{ user.username }}</h1>
+        <p style="margin: 5px 0; font-size: 14px; color: #ccc;">Email: {{ user.email }}</p>
+        <p style="margin: 5px 0; font-size: 14px; color: #ccc; margin-bottom: 20px;">Joined: {{ user.date_joined|date:"d.m.Y" }}</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            <a href="{% url 'logout' %}" style="color: #f44336; text-decoration: none; font-size: 14px;">Logout</a>
+            
+            <a href="{% url 'index' %}" class="btn-back" style="
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                color: #6a9955;
+                text-decoration: none;
+                font-family: 'JetBrains Mono', monospace;
+                font-size: 13px;
+                padding: 8px 12px;
+                border: 1px solid #333;
+                border-radius: 4px;
+                background: #252526;
+                transition: all 0.2s;
+            ">
+                <span>←</span> Back to editor
+            </a>
+        </div>
     </div>
 
-    <div class="user-rooms" style="flex: 1;">
-        <h3 style="margin-top: 0; color: #569cd6;">Мои комнаты (Создатель)</h3>
+    <div class="user-rooms" style="flex: 2; max-height: 70vh; overflow-y: auto; padding-right: 15px;">
+        <h3 style="margin-top: 0; color: #569cd6;">My rooms</h3>
         
         {% if created_rooms %}
-            <ul style="list-style: none; padding: 0;">
+            <div class="rooms-grid">
                 {% for room in created_rooms %}
                     <li style="margin-bottom: 15px; padding: 10px; background: #252526; border-radius: 4px; border: 1px solid #3c3c3c;">
                         <strong style="display: block; font-size: 16px;">{{ room.name }}</strong>
-                        <span style="font-size: 11px; color: #888;">Создана: {{ room.created_at|date:"d M Y" }}</span>
+                        <span style="font-size: 11px; color: #888;">Created: {{ room.created_at|date:"d M Y" }}</span>
                         
-                        <div style="margin-top: 10px;">
-                            <a href="{% url 'index' %}" style="color: #6a9955; text-decoration: none; font-size: 13px; margin-right: 15px;">
-                                ➔ Войти в редактор
+                        <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                            <a href="{% url 'index' %}" style="color: #6a9955; text-decoration: none; font-size: 13px; font-weight: bold; border: 1px solid #3c3c3c; padding: 4px 8px; border-radius: 4px; background: #2d2d2d;">
+                                ➔ Open
                             </a>
+
+                            <form action="{% url 'delete_room' room.id %}" method="POST" style="margin: 0;" onsubmit="return confirm('Вы уверены, что хотите удалить эту комнату?');">
+                                {% csrf_token %}
+                                <button type="submit" style="background: none; border: 1px solid #444; color: #f44336; cursor: pointer; font-size: 11px; padding: 4px 8px; border-radius: 4px; opacity: 0.7; transition: all 0.2s;">
+                                    Delete
+                                </button>
+                            </form>
+                        
                         </div>
                     </li>
                 {% endfor %}
             </ul>
         {% else %}
-            <p style="color: #666;">Вы еще не создали ни одной комнаты.</p>
-            <a href="{% url 'create_project' %}" style="color: #569cd6; text-decoration: none;">+ Создать первую комнату</a>
+            <p style="color: #666;">You haven't created any rooms</p>
+            <a href="{% url 'create_project' %}" style="color: #569cd6; text-decoration: none;">+ Create the room</a>
         {% endif %}
     </div>
 
